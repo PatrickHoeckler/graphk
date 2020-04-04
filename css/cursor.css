@@ -1,0 +1,10 @@
+.cursor-cross {
+  cursor: crosshair;
+}
+.cursor-busy {
+  cursor: progress;
+}
+
+.cursor-delete {
+  cursor: url(../assets/cursors/delete.png), not-allowed;
+}

@@ -1,0 +1,23 @@
+:root {
+  /*Fonts*/
+  --main-font-family: Segoe WPC,Segoe UI,sans-serif;
+  
+  /*Colors*/
+  --main-bg-color: rgb(30, 30, 30);
+  --main-dark-color: rgb(30, 30, 30);
+  --main-medium-color: rgb(40, 40, 40);
+  --main-light-color: rgb(55, 55, 55);
+  --main-focus-color: rgb(200, 200, 210);
+  --main-font-color: whitesmoke;
+  --toolbar-color: rgb(64,64,64);
+
+  /*Symbols*/
+  --tree-folder-closed : "\1F5C0";
+  --tree-folder-open   : "\1F5C1"; 
+  --tree-folder-empty  : "\1F5CB"; 
+  --tree-pkg-open    : "\25EB";
+  --tree-pkg-closed  : "\25F0";
+  --tree-leaf        : "\25FB";
+  --tree-leaf-ready  : "\25FC";
+  --tree-leaf-broken : "\2715";
+}

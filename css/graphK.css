@@ -1,0 +1,153 @@
+/*Styles for the chart container and its elements*/
+.graphK {
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--main-bg-color, black);
+  user-select: none;
+  font-family: 'Segoe WPC', 'Segoe UI', sans-serif;
+  height: 100%;
+}
+.graphK, .graphK>.wrapper {
+  display: flex;
+  width: 100%;
+}
+.graphK>.wrapper {
+  flex-grow: 1;
+  height: 0;
+}
+.graphK .highlight {background-color: var(--highlight-color, transparent);}
+.graphK .inactive {pointer-events: none;}
+.graphK .overlay {opacity: 0.3;}
+
+.graphK .toolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background-color: var(--toolbar-color, lightgray);
+  width: 100%;
+  height: 28px;
+}
+.graphK .toolbar>.gpk {
+  display: flex;
+  width: 26px;
+  align-items: center;
+  justify-content: center;
+  margin: 0px 3px;
+}
+.graphK .toolbar>.gpk.pressed {
+  pointer-events: all;
+  outline-width: 4px;
+  outline-offset: -2px;
+  outline-style: groove;
+  outline-color: rgb(100,100,100);
+  background-color: rgb(50, 50, 50);
+}
+.graphK .toolbar>.gpk.pressed.highlight {
+  outline-color: rgb(120,120,120);
+  background-color: rgb(70, 70, 70);
+}
+
+/*** chart-control ***/
+.graphK .chart-control {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  background-color: var(--main-medium-color, lightgray);
+  box-sizing: border-box;
+  width: 20%;
+  height: 100%;
+}
+
+.graphK .chart-control .wrapper {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  height: 100%;
+}
+
+.panel {
+  display: flex; flex-direction: column;
+  flex-grow: 1; height: 0; transition: flex-grow 500ms;
+}
+.panel.collapsed {flex-grow: initial; height: initial;}
+
+.panel-bar {
+  display: flex;
+  background-color: #6f6f6f;
+  color: var(--main-font-color, whitesmoke);
+  font-size: 14px;
+  font-weight: 100;
+  font-family: var(--main-font-family, Segoe WPC,Segoe UI,sans-serif);
+}
+.panel>*>.panel-bar-indicator {
+  padding-right: 6px;
+  padding-left: 4px;
+  transform: rotate(90deg);
+}
+.panel>*>.panel-bar-indicator::before {content: '\276F'}
+.panel.collapsed>*>.panel-bar-indicator {transform: none}
+.panel-body {
+  flex-grow: 1; height: 0;
+  overflow-y: auto; overflow-x: hidden;
+}
+.panel-body::-webkit-scrollbar {width: 8px;}
+.panel-body::-webkit-scrollbar-thumb {background-color: #555;}
+.panel-body::-webkit-scrollbar-thumb:hover {background-color: #888;}
+
+
+/*** chart-area ***/
+.graphK .chart-area {
+  flex-grow: 1; /*stretchs to take the rest of the width on the container*/
+  background-color: var(--main-dark-color, lightgray);
+  box-sizing: border-box;
+  padding: 4px;
+  height: 100%;
+  overflow-y: auto;
+}
+/******************/
+
+/*** chart-body ***/
+.graphK .chart-body {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 3px;
+}
+
+.graphK .height-resizer{
+  cursor: s-resize;
+  height: 10px;
+  width: 100%;
+  margin: -5px 0px;
+  transform: translateY(0px);
+}
+
+.graphK .width-resizer{
+  cursor: e-resize;
+  width: 8px;
+  height: 100%;
+  margin-right: -8px;
+  transform: translateX(0px);
+}
+
+.graphK           .brush>.overlay {cursor: auto;}
+.graphK .inactive .brush>.overlay {pointer-events: none;}
+.graphK.drag      .brush>.overlay {pointer-events: none;}
+.brush>.selection {shape-rendering: auto;}
+.brush>.warning {
+  fill: red;
+  stroke: crimson;
+}
+
+/**** modes of operation ****/
+.graphK      .toolbar {--highlight-color: dimgray;}
+.graphK.drag .toolbar {--highlight-color: darkgreen;}
+
+.graphK        .chart-area {--highlight-color: transparent;}
+.graphK.delete .chart-area {--highlight-color: crimson;}
+.graphK.drag   .chart-area {--highlight-color: darkgreen;}
+
+.graphK        .chart-control {--highlight-color: rgb(70, 70, 70);}
+.graphK.delete .chart-control {--highlight-color: crimson;}
+.graphK.select .chart-control {--highlight-color: darkcyan;}
+.graphK.drag   .chart-control {--highlight-color: darkgreen;}
+/****************************/

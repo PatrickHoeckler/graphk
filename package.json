@@ -1,0 +1,21 @@
+{
+  "name": "graphk",
+  "productName": "graphK",
+  "version": "1.0.0",
+  "description": "Tem que dar um nome pra esse projeto :)",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": {
+    "name": "Patrick Hoeckler",
+    "email": "patrick.hoeckler1@gmail.com",
+    "url": "https://github.com/PatrickHoeckler"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "d3": "^5.15.1",
+    "electron": "^7.2.1"    
+  }
+}
