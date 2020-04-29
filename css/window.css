@@ -1,0 +1,16 @@
+.window, .window-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.window-contents {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  position: absolute;
+  border: 1px solid gray;
+  box-shadow: 0px 0px 25px -10px;
+}

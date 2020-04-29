@@ -5,8 +5,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'">
 	<link rel="stylesheet" href="../css/theme.css">
 	<link rel="stylesheet" href="../css/context.css">
+	<link rel="stylesheet" href="../css/window.css">
 	<link rel="stylesheet" href="../css/cursor.css">
 	<link rel="stylesheet" href="../css/graphK.css">
   <link rel="stylesheet" href="../css/icons.css">
@@ -14,12 +16,14 @@
 
 	<!-- My Scripts -->
   <script src="../js/start.js"></script>
-  <script src="../js/context.js"></script>
   <script src="../js/graphK/graphK.js"></script>
+  <script src="../js/graphK/auxiliar/context.js"></script>
+  <script src="../js/graphK/auxiliar/window.js"></script>
   <script src="../js/graphK/control/control.js"></script>
-  <script src="../js/graphK/control/transformBox.js"></script>
+  <script src="../js/graphK/control/transformPanel.js"></script>
+  <script src="../js/graphK/control/transformSelector.js"></script>
   <script src="../js/graphK/control/navTree.js"></script>
-  <script src="../js/graphK/control/routineBox.js"></script>
+  <script src="../js/graphK/control/routinePanel.js"></script>
 	<script src="../js/graphK/render/chart.js"></script>
   <script src="../js/graphK/render/chartArea.js"></script>
   <script src="../js/graphK/toolbar.js"></script>
@@ -29,7 +33,6 @@
 
 <!-- BODY TIME-->
 <body style="height: 100%; margin: 0px;">
-  <div id="chart-space" style="height: 100%;"></div>
 </body>
 
 </html>

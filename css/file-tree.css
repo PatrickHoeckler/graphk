@@ -4,7 +4,9 @@
   font-size: 14px;
 }
 
-.file-tree .wrapper{
+.file-tree .folder-contents{
+  display: flex;
+  flex-direction: column;
   padding: 1px 0px 1px 10px;
   margin-left: 6px;
   border-left: 1px solid;
@@ -13,48 +15,32 @@
 }
 
 /*parent nodes on the tree*/
-.file-tree .collapsible>.folder::before {content: var(--tree-folder-open, "\1F5C1");}
-.file-tree .collapsed>.folder::before {content: var(--tree-folder-closed, "\1F5C0");}
-.file-tree .collapsible>.folder.pkg::before {content: var(--tree-pkg-open, "\25EB");}
-.file-tree .collapsed>.folder.pkg::before {content: var(--tree-pkg-closed, "\25F0");}
-.file-tree .folder.empty::before {content: var(--tree-folder-empty, "\1F5CB");}
+.collapsible>.folder    >.node-icon::before {content: var(--tree-folder-open, "\1F5C1");}
+.collapsed  >.folder    >.node-icon::before {content: var(--tree-folder-closed, "\1F5C0");}
+.collapsible>.folder.pkg>.node-icon::before {content: var(--tree-pkg-open, "\25EB");}
+.collapsed  >.folder.pkg>.node-icon::before {content: var(--tree-pkg-closed, "\25F0");}
+.folder.empty>.node-icon::before {content: var(--tree-folder-empty, "\1F5CB");}
 /*leaf nodes in the tree*/
-.file-tree .leaf::before   {content: var(--tree-leaf, "\25FB");}
-.file-tree .ready::before  {content: var(--tree-leaf-ready, "\25FC");}
-.file-tree .broken::before {content: var(--tree-leaf-broken, "\2715");}
+.file-tree .leaf  >.node-icon::before {content: var(--tree-leaf, "\25FB");}
+.file-tree .ready >.node-icon::before {content: var(--tree-leaf-ready, "\25FC");}
+.file-tree .broken>.node-icon::before {content: var(--tree-leaf-broken, "\2715");}
 
 
 .file-tree .folder, .file-tree .leaf {
   display: flex;
+  align-items: center;
   flex-direction: row;
   margin: 1px 0px;
 }
 
-
 .file-tree .node-name {
-  width: 0px;
-  flex-grow: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-left: 4px;
 }
 
 /*alllows for folders on tree to be collapsed, displaying none of the children*/
-.file-tree .collapsed>.wrapper {display: none;}
-
-.file-tree .rename {
-  box-sizing: border-box;
-  border: none;
-  flex-grow: 1;
-  width: 0px;
-  background-color: gray;
-  color: whitesmoke;
-  font-family: var(--main-font-family, Segoe WPC, Segoe UI, sans-serif);
-  font-size: inherit;
-  padding: 0px;
-  margin-left: 4px;
-  margin-right: 2px;
-}
+.file-tree .collapsed>.folder-contents {display: none;}
 
 .file-tree .warning {
   outline: 1px solid brown;

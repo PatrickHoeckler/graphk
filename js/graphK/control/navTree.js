@@ -7,42 +7,25 @@
 graphK.NavTree = function() {
   //Public Methods
   this.node  = () => node;
-  this.clear = () => node.textContent = '';
+  this.clear = () => node.innerHTML = '';
   this.addFolder = function (folder, parent = node) {
     let wrapper = graphK.appendNewElement(parent, 'div', 'collapsible collapsed');
     let folderDiv = graphK.appendNewElement(wrapper, 'div', 'folder');
-    let branch = graphK.appendNewElement(wrapper, 'div', 'wrapper');
+    let contents = graphK.appendNewElement(wrapper, 'div', 'folder-contents');
+    graphK.appendNewElement(folderDiv, 'span', 'node-icon');
     graphK.appendNewElement(folderDiv, 'span', 'node-name').innerHTML = folder.name;
     if (folder.type === 'pkg') {folderDiv.classList.add('pkg');}
     for (let file of folder.value) {
-      if (typeof(file.value) === "object") {this.addFolder(file, branch);}
+      if (typeof(file.value) === "object") {this.addFolder(file, contents);}
       else {
-        let leaf = graphK.appendNewElement(branch, 'div', 'leaf');
+        let leaf = graphK.appendNewElement(contents, 'div', 'leaf');
         if (file.tooltip) {leaf.setAttribute('title', file.tooltip);}
+        graphK.appendNewElement(leaf, 'span', 'node-icon');
         graphK.appendNewElement(leaf, 'span', 'node-name').innerHTML = file.name;
       }
     }
     return folderDiv;
   }
-
-  //this.addFolder = function (folder, folderName, parent = node) {
-  //  let wrapper = graphK.appendNewElement(parent, 'div', 'collapsible collapsed');
-  //  let folderDiv = graphK.appendNewElement(wrapper, 'div', 'folder');
-  //  let branch = graphK.appendNewElement(wrapper, 'div', 'wrapper');
-  //  graphK.appendNewElement(folderDiv, 'span', 'node-name').innerHTML = folderName;
-  //  if (folder[i].type === 'pkg') {folderDiv.classList.add('pkg');}
-  //  for (let i = 0; i < folder.length; i++) {
-  //    if (typeof(folder[i].value) === "object") {
-  //      this.addFolder(folder[i].value, folder[i].name, branch);
-  //    }
-  //    else {
-  //      let leaf = graphK.appendNewElement(branch, 'div', 'leaf');
-  //      if (folder[i].tooltip) {leaf.setAttribute('title', folder[i].tooltip);}
-  //      graphK.appendNewElement(leaf, 'span', 'node-name').innerHTML = folder[i].name;
-  //    }
-  //  }
-  //  return folderDiv;
-  //}
 
   this.getContainingElement = function (elem) {
     for (let curElem = elem;; curElem = curElem.parentElement) {
@@ -97,6 +80,5 @@ graphK.NavTree = function() {
   }
 
   //Initialize object
-  var node = document.createElement('div');
-  node.classList.value = 'file-tree';
+  var node = graphK.appendNewElement(null, 'div', 'file-tree');
 }

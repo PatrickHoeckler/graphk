@@ -16,9 +16,9 @@ graphK.ChartArea = function() {
     "#7cfc00",  //LawnGreen
     "#da70d6",  //Orchid
     "#d2691e",  //Chocolate
-    "#ff1493"  //DeepPink
+    "#ff1493"   //DeepPink
   ];
-
+  
   //Private Properties
   var node;
   var mode; //current mode of operation being used
@@ -29,6 +29,7 @@ graphK.ChartArea = function() {
 
   //Public Methods
   this.node = () => node;
+  this.setModeObj = (modeObj) => mode = modeObj;
   this.chartCount = () => charts.length;
   this.onContext = (callback) => contextCallback = callback;
   this.setBrush = (enable) => charts.forEach(c => c.setBrush(enable));
@@ -74,14 +75,6 @@ graphK.ChartArea = function() {
     }
     return null;
   }
-  this.getMode = () => mode;
-  this.setMode = function(newMode) {
-    if (newMode === mode) {return true;}
-    if (!this.canSetMode(newMode)) {return false;}
-    mode = newMode;
-    return true;
-  }
-  this.canSetMode = (newMode) => newMode === graphK.mode.NORMAL || mode === graphK.mode.NORMAL;
 
   //Private Functions
   function removeChart(chartElem) {
@@ -110,7 +103,6 @@ graphK.ChartArea = function() {
   
   //Initialize object
   charts = [];
-  mode = graphK.mode.NORMAL;
   node = graphK.appendNewElement(null, 'div', 'chart-area');
   this.addChart();
 
@@ -146,7 +138,7 @@ graphK.ChartArea = function() {
     mouseOverElem = null;
   })
   node.addEventListener('dblclick', (e) => {
-    if (mode !== graphK.mode.DELETE) {return;}
+    if (mode.mode() !== graphK.mode.DELETE) {return;}
     removeChart(e.target); //removes chart that contains the target of the event
   })
   node.addEventListener('contextmenu', (e) => {

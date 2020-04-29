@@ -1,20 +1,29 @@
 /*Styles for the chart container and its elements*/
 .graphK {
-  flex-direction: column;
+  position: relative;
   overflow: hidden;
   background-color: var(--main-bg-color, black);
   user-select: none;
   font-family: 'Segoe WPC', 'Segoe UI', sans-serif;
   height: 100%;
 }
-.graphK, .graphK>.wrapper {
+.graphK *::-webkit-scrollbar {width: 8px;}
+.graphK *::-webkit-scrollbar-thumb {background-color: #555;}
+.graphK *::-webkit-scrollbar-thumb:hover {background-color: #888;}
+
+.graphK .container {
   display: flex;
+  flex-direction: column;
+  height: 100%;
   width: 100%;
 }
-.graphK>.wrapper {
+.graphK .wrapper {
+  display: flex;
   flex-grow: 1;
   height: 0;
+  width: 100%;
 }
+
 .graphK .highlight {background-color: var(--highlight-color, transparent);}
 .graphK .inactive {pointer-events: none;}
 .graphK .overlay {opacity: 0.3;}
@@ -57,12 +66,24 @@
   width: 20%;
   height: 100%;
 }
-
 .graphK .chart-control .wrapper {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
   height: 100%;
+}
+.chart-control .rename {
+  box-sizing: border-box;
+  border: none;
+  flex-grow: 1;
+  width: 0px;
+  background-color: gray;
+  color: whitesmoke;
+  font-family: var(--main-font-family, Segoe WPC, Segoe UI, sans-serif);
+  font-size: inherit;
+  padding: 0px;
+  margin-left: 4px;
+  margin-right: 2px;
 }
 
 .panel {
@@ -90,9 +111,53 @@
   flex-grow: 1; height: 0;
   overflow-y: auto; overflow-x: hidden;
 }
+/*
 .panel-body::-webkit-scrollbar {width: 8px;}
 .panel-body::-webkit-scrollbar-thumb {background-color: #555;}
 .panel-body::-webkit-scrollbar-thumb:hover {background-color: #888;}
+*/
+.routine-panel {
+  box-sizing: border-box;
+  height: 100%;
+  padding: 4px 0px 4px 10px;
+  font-size: 14px;
+  color: var(--main-font-color, whitesmoke);
+}
+.routine-panel .node-name {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-left: 4px;
+}
+.routine-head, .routine-step {display: flex;}
+.routine-box          >.routine-head::before {content: "\25CE";}
+.routine-box.collapsed>.routine-head::before {content: "\25C9";}
+.routine-box.collapsed>.routine-sequence {display: none;}
+.routine-sequence {
+  margin-left: 5px;
+  border-left: 1px solid gray;
+  padding-left: 10px;
+}
+.routine-step.empty::before, .routine-step.empty>* {opacity: 0.5;}
+.routine-step.empty>* {opacity: 0.4;}
+.routine-step::before {content: "\2937";}
+.routine-button {
+  display: none;
+  align-self: flex-end;
+  margin-left: auto;
+  margin-right: 5px;
+}
+.highlight .routine-button {display: unset;}
+.routine-exec::before {content: "\25B7";}
+.routine-exec:hover::before {content: "\25B6";}
+.routine-cfg::before {content: "\2630"; opacity: 0.6;}
+.routine-cfg:hover::before {opacity: 1;}
+.routine-transforms {
+  box-sizing: border-box;
+  padding: 4px;
+  background-color: var(--main-bg-color, lightgray);
+  width: 100%; height: 100%;
+  overflow: auto;
+}
 
 
 /*** chart-area ***/
@@ -151,3 +216,46 @@
 .graphK.select .chart-control {--highlight-color: darkcyan;}
 .graphK.drag   .chart-control {--highlight-color: darkgreen;}
 /****************************/
+
+/*Transform Selector*/
+.graphK .transform-selector {
+  box-sizing: border-box;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--main-bg-color, lightgray);
+  width: 100%; height: 100%;
+}
+
+.transform-selector .checkbox {
+  display: flex; box-sizing: border-box;
+  align-items: center; justify-content: center;
+  background-color: whitesmoke;
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  margin-right: 5px;
+}
+.transform-selector .checkbox:hover {background-color: rgb(200,200, 200);}
+.transform-selector .checkbox.checked::before {
+  content: ""; height: 0; width: 0;
+  border: 2px solid rgb(70,70,70);
+}
+
+.transform-selector>.tree-wrapper { 
+  flex-grow: 1;
+  overflow: auto;
+  border: 1px solid gray;
+}
+.transform-selector>.button-wrapper {
+  display: flex;
+  margin-top: 4px;
+}
+.transform-selector button {
+  margin: 2px;
+  margin-left: 4px;
+  background-color: whitesmoke;
+  border: 1px inset white;
+  font-family: var(--main-font-family, Monospace);
+  font-size: small;
+}
+.transform-selector button:hover{background-color: lightgray;}

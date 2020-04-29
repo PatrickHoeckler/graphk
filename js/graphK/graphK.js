@@ -17,6 +17,42 @@ graphK.color = {
 };
 
 //Modes
+graphK.Mode = function (startMode) {
+  //Public Methods
+  this.mode = () => mode;
+  this.canChange = (newMode) => checkCallback && checkCallback(newMode);
+  this.change = function (newMode) {
+    if (mode === newMode) {return true;}
+    if (!checkCallbacks.every(check => check(newMode))) {return false;}
+    changeCallbacks.forEach(callback => callback(newMode));
+    mode = newMode;
+    return true;
+  }
+  this.check = newMode => {
+    let r = mode === newMode || checkCallbacks.every(check => check(newMode));
+    return r;
+  }
+  this.addChangeListener = (callback) => changeCallbacks.push(callback);
+  this.addCheckListener  = (callback) => checkCallbacks.push(callback);
+  this.removeChangeListener = (callback) => {
+    let index = changeCallbacks.indexOf(callback);
+    if (index !== -1) {changeCallbacks.splice(index, 1);}
+  }
+  this.removeCheckListener = (callback) => {
+    let index = checkCallbacks.indexOf(callback);
+    if (index !== -1) {checkCallbacks.splice(index, 1);}
+  }
+
+  //Private properties
+  var mode;
+  var checkCallbacks, changeCallbacks;
+
+  //Initialize Object
+  mode = startMode;
+  checkCallbacks = [];
+  changeCallbacks = [];
+}
+
 graphK.mode = {
   NORMAL: 0,
   SELECT: 1,
@@ -55,4 +91,43 @@ graphK.deepClone = function(obj) {
     }
   }
   return clone;
+}
+
+graphK.getContextItems = function(place, detail) {
+  if (place === 'navTree') {
+    //There are six possibilities for detail:
+    //folder, folder:top, folder:empty
+    //leaf, leaf:ready, leaf:broken
+    if (
+      detail === 'folder' ||
+      detail === 'leaf:broken' ||
+      detail === 'leaf'
+    ) {return null;}
+    let [where, state] = detail.split(':');
+    return [
+      {name: 'Copy to New', return: 'copy', type: state === 'empty' ? 'inactive' : undefined},
+      {name: 'Rename', return: 'rename', type: where === 'leaf' ? 'inactive' : undefined},
+      {name: 'Save',   return: 'save', type: state === 'empty' ? 'inactive' : undefined},
+      {name: 'Remove', return: 'remove'},
+    ];
+  }
+  else if (place === 'chart') {
+    return [
+      {name: 'Select Region', return: 'select', type: detail !== 'brush' ? 'inactive' : undefined},
+      {type: 'separator'},
+      {name: 'Remove', return: 'remove'},
+      {name: 'Clear', return: 'clear'}
+    ]
+  }
+  else if (place === 'routine') {
+    return [
+      {name: 'Rename', return: 'rename', type: detail === 'panel' ? 'inactive' : undefined},
+      {name: 'New Routine', return: 'newR'},
+      {name: 'Remove Routine', return: 'remR', type: detail !== 'head' ? 'inactive' : undefined},
+      {type: 'separator'},
+      {name: 'New Step', return: 'newS', type: detail === 'panel' ? 'inactive' : undefined},
+      {name: 'Remove Step', return: 'remS', type: detail !== 'step' ? 'inactive' : undefined},
+    ]
+  }
+  else {return null;}
 }

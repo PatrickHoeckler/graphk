@@ -3,10 +3,9 @@
 //    COISAS PARA AJUSTAR NO FUTURO
 // - O jeito que eu carrego as transformações usando require/exports parece esquisito,
 //   talvez tenha um jeito melhor de fazer.
-// - O jeito que eu passo as transformações da thread executando esse código (main process),
-//   para a thread renderizando a janela principal (renderer process) me parece estranho
-//   (eu to usando o objeto compartilhado 'global'), ver se tem um jeito melhor de fazer isso
-//
+// - Muda os nomes que eu estou usando para fazer as comunicações entre processos via
+//   ipcRender e ipcMain, os nomes são meio complicados e confusos. Por Exemplo: 
+//   'transformations:values', 'arguments:select', etc.
 
 // Modules
 const electron = require('electron');
@@ -14,11 +13,6 @@ const url = require('url');
 const path = require('path');
 const fs = require('fs');
 const {app, BrowserWindow, Menu, dialog, ipcMain} = electron;
-
-//global shared object
-global.graphK = {}; //initially empty
-//transformation files
-const transformsFiles = loadTransformsNames();
 
 //Platform specific
 //************ ADICIONAR SUPORTE AO MAC NO FUTURO *****************
@@ -33,8 +27,10 @@ app.on('ready', function (){
     title: 'graphK',
     minHeight: 300,
     minWidth: 600,
-    webPreferences: {nodeIntegration: true},
-    show: false
+    show: false,
+    webPreferences: {
+      nodeIntegration: true
+    }
   });
   //Load html into window
   mainWindow.loadURL(url.format({
@@ -131,49 +127,36 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 //catch request for transformations:names
-ipcMain.on('transformations:names', (e, transformMask) => {
-  let checkMask = transformMask === 'all' ? false: true;
-  let transforms = {name: '.', value: []};
-  //defining a self executing function to load all transformations
-  //into the transforms object
-  (function loadTransforms(transfFolder, folderPath, mask, saveTo) {
-    for (let i = 0; i < transfFolder.length; i++) {
-      //if the element corresponds to a directory (is a object containing a value key)
-      if (transfFolder[i].value !== undefined) {
-        //if the mask needs to be checked and if mask is false ignores the directory
-        if (checkMask && !mask[i][0]) continue;
+ipcMain.handle('transformations:names', (event) => {
+  //gets all filenames located inside the 'transformations' folder
+  //returns an array representing all the files, depending if the file
+  //is a directory or not, the corresponding element will be:
+  //  - if file is not a directory: the array element is an object with 
+  //    a name key containing the file name.
+  //  - if file is a directory: the array element will be an object that
+  //    besides having a key for the directory name, also contains a value
+  //    key which will be another array where its elements represent the
+  //    files inside the directory in the same manner as given by this two
+  //    bullet points
+  let dirName = path.join(__dirname, 'transformations');
+  let tfFiles = {name: '.', value: []};
+  (function readFolder(folder, saveTo) {
+    let files = fs.readdirSync(folder, {withFileTypes: true});
+    for (let i = 0; i < files.length; i++) {
+      if (files[i].isDirectory()) {
         let newFolder = [];
-        saveTo.push({name: transfFolder[i].name, value: newFolder, type: 'dir'});
-        let nextPath = path.join(folderPath, transfFolder[i].name);
-        loadTransforms(
-          transfFolder[i].value, nextPath,
-          !checkMask ? null : mask[i].slice(1),
-          newFolder
-        );
+        saveTo.push({name: files[i].name, value: newFolder});
+        readFolder(path.join(folder, files[i].name), newFolder);
       }
-      //if the element corresponds to a file
       else {
-        //if the mask needs to be checked and if mask is false ignores the file
-        if (checkMask && !mask[i]) continue;
-        let transformPath = '.\\' + path.join(folderPath, transfFolder[i].name);
-        let imports = require(transformPath);
-        if (Array.isArray(imports.pkg)) {
-          let pkgName = imports.pkgName ? imports.pkgName : path.parse(transformPath).name;
-          let newFolder = [];
-          saveTo.push({name: pkgName, value: newFolder, type: 'pkg'});
-          for (let tf of imports.pkg) {newFolder.push(tf);}
-        }
-        else {saveTo.push(imports);}
+        saveTo.push({name: files[i].name});
       }
     }
-  })(transformsFiles.value, 'transformations', transformMask, transforms.value)
-
-  //stores transforms object on global object to be acessed by the renderer process
-  global.graphK.transforms = transforms;
-  mainWindow.webContents.send('transformations:values');
+  })(dirName, tfFiles.value);
+  return tfFiles;
 });
 
-ipcMain.on('arguments:input', (e, argsFormat) => {
+ipcMain.on('arguments:input', (event, argsFormat) => {
   if (argsFormat === undefined || argsFormat === null) {
     mainWindow.webContents.send('arguments:values', true);
     return;
@@ -232,7 +215,7 @@ ipcMain.on('arguments:select', () => {
   });
 });
 
-ipcMain.on('save:file', (e, name, value) => {
+ipcMain.on('save:file', (event, name, value) => {
   //show dialog box to save file
   let fileName = dialog.showSaveDialogSync(mainWindow, {
     defaultPath: name,
@@ -267,33 +250,3 @@ ipcMain.on('save:file', (e, name, value) => {
 });
 
 ipcMain.on('open:file', addFile);
-
-//gets all filenames located inside the 'transformations' folder
-//returns an array representing all the files, depending if the file
-//is a directory or not, the corresponding element will be:
-//  - if file is not a directory: the array element is an object with 
-//    a name key containing the file name.
-//  - if file is a directory: the array element will be an object that
-//    besides having a key for the directory name, also contains a value
-//    key which will be another array where its elements represent the
-//    files inside the directory in the same manner as given by this two
-//    bullet points
-function loadTransformsNames() {
-  function readFolder(folder, saveTo) {
-    let files = fs.readdirSync(folder, {withFileTypes: true});
-    for (let i = 0; i < files.length; i++) {
-      if (files[i].isDirectory()) {
-        let newFolder = [];
-        saveTo.push({name: files[i].name, value: newFolder});
-        readFolder(path.join(folder, files[i].name), newFolder);
-      }
-      else {
-        saveTo.push({name: files[i].name});
-      }
-    }
-  }
-  let dirName = path.join(__dirname, 'transformations');
-  let transformsFiles = {name: '.', value: []};
-  readFolder(dirName, transformsFiles.value);
-  return transformsFiles;
-}
