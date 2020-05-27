@@ -1,10 +1,15 @@
 "use strict";
 
 //    COISAS PARA AJUSTAR NO FUTURO
-//
+// - Isso aqui parece muito pouco código pra um único módulo, analisar alternativas
+//   para o uso deste módulo (Talvez até tirar a toolbar do programa e substituir a
+//   funcionalidade pelas barras específicas de cada painel).
 //
 
-graphK.Toolbar = function(icons) {
+module.exports = {Toolbar};
+
+const {appendNewElement} = require('./auxiliar/auxiliar.js')
+function Toolbar(icons) {
   //Public Attributes
 
   //Private Properties
@@ -14,11 +19,10 @@ graphK.Toolbar = function(icons) {
 
   //Private Functions
 
-
   //Initialize object
-  node = graphK.appendNewElement(null, 'div', 'toolbar');
+  node = appendNewElement(null, 'div', 'toolbar');
   for (let i = 0; i < icons.length; i++) {
-    graphK.appendNewElement(node, 'span', `gpk ${icons[i].name}`)
+    appendNewElement(node, 'span', `gpk ${icons[i].name}`)
       .setAttribute('title', icons[i].tooltip);
   }
 }

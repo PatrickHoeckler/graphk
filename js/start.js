@@ -16,27 +16,36 @@
 //   mostrar tudo que está na pasta transformations. A função usada já consegue filtrar os
 //   arquivos dado uma máscara, mas não foi implementado um meio de criá-la por meio da
 //   seleção dos nomes dos arquivos.
+// - Analisar a possibilidade de trocar todos ou alguns callbacks para Promises, deixando o
+//   código mais simples.
+// - Adicionar um jeito melhor de checar por erros, principalmente typeError. É difícil por
+//   enquanto checar por vários tipos de uma só vez e dar throw quando encontra algum erro.
+//   A função no arquivo 'graphK.js' chamada graphK.checkType() é uma opção que eu pensei
+//   até o momento, mas ainda não é usada por nenhuma parte do programa. No futuro tentar
+//   implementar algo do tipo para facilitar a detecção de erros. Por enquanto grande parte
+//   das vezes eu estou assumindo que não vai ocorrer nenhum tipo de erro ou estou fazendo
+//   uma checagem simples.
+//
 
-//Modules
-const d3 = require('d3');
-const fs = require('fs');
-const path = require('path');
-const {ipcRenderer} = require('electron');
+//Modules - all these are loaded and stored in the global object via the preload.js file
+const {path, ipcRenderer} = preloadedModules;
+const {GraphK, Mode} = require('../js/graphK/graphK.js')
 
-var graphKcontainer;
-
-//===DEBUG===
-var t1, t2;
-//===========
+//REMOVER ESSA VARIÁVEL DO ESCOPO GLOBAL NO FUTURO. SÓ DEIXEI AQUI PRA FACILITAR O DEBUG
+var graphK;
 
 (function() { //Self executing function to isolate scope
 
 window.onload = function() {
-  graphKcontainer = new graphK.Container();
-  graphKcontainer.onGetArguments(getArguments);
-  graphKcontainer.onSave((name, value) => ipcRenderer.send('save:file', name, value));
-  document.body.appendChild(graphKcontainer.node());
-  
+  graphK = new GraphK();
+  document.body.appendChild(graphK.node());
+  //graphK.onSave((name, value) => ipcRenderer.send('save:file', name, value));
+  graphK.onCallParent(function (message, details) {
+    if (message === 'load-file') {return ipcRenderer.invoke('load:file');}
+    if (message === 'save-file') {
+      return ipcRenderer.invoke('save:file', details.name, details.value);
+    }
+  })
   ipcRenderer.invoke('transformations:names').then(function(tfFiles) {
     let checkMask = false;
     let transforms = {name: '.', value: []};
@@ -73,81 +82,37 @@ window.onload = function() {
         }
       }
     })(tfFiles.value, '../transformations', null, transforms.value)
-    graphKcontainer.setTransforms(transforms);
+    graphK.setTransforms(transforms);
   });
 }
 
-window.onresize = () => graphKcontainer.resize();
-ipcRenderer.on('file:add', (e, fileNames) => graphKcontainer.readFiles(fileNames));
+window.onresize = () => graphK.resize();
+ipcRenderer.on('file:add', (e, fileNames) => graphK.readFiles(fileNames));
 
-function getArguments(argsFormat, calculateTransform) {
-  //if no arguments needed, just calls the callback to calculate transform
-  if (!argsFormat) {
-    calculateTransform();
-    return;
-  }
-  //send request for arguments of given format to main process
-  ipcRenderer.send('arguments:input', argsFormat);
-  //catches requests for data selection
-  ipcRenderer.on('arguments:select', () => {
-    graphKcontainer.startDataSelect((name, path, canceled) => {
-      //path is given as an array. The window that takes the arguments only accepts
-      //values as string, so we stringify the array. Later we parse the values back
-      path = JSON.stringify(path);
-      ipcRenderer.send('arguments:selected', name, path, canceled);
-    });
-  })
-  //once the argument request has been answered
-  ipcRenderer.once('arguments:values', (e, success, args) => {
-    ipcRenderer.removeAllListeners('arguments:select');
-    if (!success) {return;}
-    for (let i = 0; i < argsFormat.length; i++) {
-      let {name, type} = argsFormat[i];
-      if (type === 'data') {
-        //in this situation args[name] holds the path to the data on the navTree,
-        //we need to get the data using this path. First we parse the values of
-        //the path back from the stringify operation made before.
-        let path = JSON.parse(args[name]);
-        //Now we use the path to get the data. Since we are only interested in
-        //the (x,y) points of the curve, we just get the key 'value'.
-        args[name] = graphKcontainer.getDataFromPath(path).value;
-      }
-    }
-    calculateTransform(args);
-  });
-}
 
 var keyPressed;
 window.addEventListener('keydown', function (e) {
   if (keyPressed) return;
   keyPressed = true;
   if (e.keyCode === 16) { //Shift
-    graphKcontainer.changeMode(graphK.mode.DELETE);
+    graphK.changeMode(Mode.prototype.DELETE);
   }
 });
 window.addEventListener('keyup', function (e) {
   keyPressed = false;
   if (e.keyCode === 16) { //Shift
-    graphKcontainer.changeMode(graphK.mode.NORMAL);
+    graphK.changeMode(Mode.prototype.NORMAL);
   }
   else if (e.keyCode === 27) { //Escape
     //cancels selection if in middle of selecting
-    if (graphKcontainer.mode() === graphK.mode.SELECT) {
-      graphKcontainer.stopDataSelect(true);
+    if (graphK.mode() === Mode.prototype.SELECT) {
+      graphK.stopDataSelect(true);
     }
     //stops brushing if brush mode is enabled
-    else if (graphKcontainer.brushEnabled) {
-      graphKcontainer.setBrush(false);
+    else if (graphK.brushEnabled) {
+      graphK.setBrush(false);
     }
   }
 });
-
-////////////////////////////DEBUG////////////////////////////
-window.addEventListener('keydown', function debugPause(e) {
-  if (e.key === 'F7') {
-    console.log('Pause');
-  }
-});
-/////////////////////////////////////////////////////////////
 
 })(); //End of self executing function

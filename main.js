@@ -18,7 +18,7 @@ const {app, BrowserWindow, Menu, dialog, ipcMain} = electron;
 //************ ADICIONAR SUPORTE AO MAC NO FUTURO *****************
 //const isMac = process.platform === 'darwin';
 
-var mainWindow, argWindow;
+var mainWindow;
 
 // Listen for app to be ready
 app.on('ready', function (){
@@ -29,8 +29,9 @@ app.on('ready', function (){
     minWidth: 600,
     show: false,
     webPreferences: {
-      nodeIntegration: true
-    }
+      nodeIntegration: true,
+      preload: path.join(__dirname, 'preload.js')
+    },
   });
   //Load html into window
   mainWindow.loadURL(url.format({
@@ -52,7 +53,7 @@ app.on('ready', function (){
   Menu.setApplicationMenu(mainMenu);
 });
 
-function addFile() {
+function loadFile() {
   //Select Files
   let fileNames = dialog.showOpenDialogSync(mainWindow, {
     properties: ['openFile', 'multiSelections'],
@@ -77,7 +78,7 @@ const mainMenuTemplate = [
       //Submenu 0
       {
         label: 'Add File',
-        click: addFile
+        click: loadFile
       },
       //Submenu 1
       {
@@ -93,25 +94,6 @@ const mainMenuTemplate = [
       { role: 'quit', accelerator: 'CmdOrCtrl+Q'}
     ]
   },
-
-  //Menu 1
-  {
-    label: 'Edit',
-    submenu: [
-      { role: 'cut' },
-      { role: 'copy' },
-      { role: 'paste' },
-    ]
-  },
-
-  //Menu 2
-  {
-    label: 'View',
-    submenu: [
-      { role: 'minimize' },
-      { role: 'togglefullscreen', label: 'Fullscreen' },
-    ]
-  }
 ];
 
 //add debug tools if not on release
@@ -156,66 +138,7 @@ ipcMain.handle('transformations:names', (event) => {
   return tfFiles;
 });
 
-ipcMain.on('arguments:input', (event, argsFormat) => {
-  if (argsFormat === undefined || argsFormat === null) {
-    mainWindow.webContents.send('arguments:values', true);
-    return;
-  }
-  //creates new window to input arguments
-  argWindow = new BrowserWindow({
-    title: 'Select the parameters',
-    height: 90 + 60 * argsFormat.length,
-    width: 400,
-    webPreferences: {nodeIntegration: true},
-    show: false,
-    parent: mainWindow,
-    modal: true,
-    resizable: false
-  });
-  //Load html into window
-  argWindow.loadURL(url.format({
-    pathname: path.join(__dirname, 'html/args.html'),
-    protocol: 'file:',
-    slashes: true
-  }));
-  argWindow.once('ready-to-show', () => {
-    argWindow.removeMenu();
-    argWindow.show();
-    //send arguments format to argWindow
-    argWindow.webContents.send('arguments:input', argsFormat);
-  });
-
-  //add event listener waiting for argWindow response
-  ipcMain.once('arguments:values', (e, args) => {
-    argWindow.removeAllListeners('close');
-    mainWindow.show();
-    argWindow.close();
-    //if user clicked cancel (args will be null)
-    if (!args) {mainWindow.webContents.send('arguments:values', false);}
-    //if args were given correctly
-    else {mainWindow.webContents.send('arguments:values', true, args);}
-    argWindow = null;
-  });
-  //event listener to handle when window closes (when user clicks the X button)
-  argWindow.once('close', () => {
-    mainWindow.show();
-    ipcMain.removeAllListeners('arguments:values');
-    mainWindow.webContents.send('arguments:values', false);
-    argWindow = null;
-  });
-});
-
-ipcMain.on('arguments:select', () => {
-  mainWindow.webContents.send('arguments:select');
-  argWindow.hide();
-  mainWindow.focus();
-  ipcMain.once('arguments:selected', (e, name, path, canceled) => {
-    argWindow.show();
-    argWindow.webContents.send('arguments:selected', name, path, canceled);
-  });
-});
-
-ipcMain.on('save:file', (event, name, value) => {
+ipcMain.handle('save:file', (event, name, value) => {
   //show dialog box to save file
   let fileName = dialog.showSaveDialogSync(mainWindow, {
     defaultPath: name,
@@ -223,7 +146,7 @@ ipcMain.on('save:file', (event, name, value) => {
       {name: 'Comma separeted values (.csv)', extensions: ['csv']}
     ],
   });
-  if (fileName === undefined) return;
+  if (fileName === undefined) {return false};
 
   //open file selected to save data
   fs.open(fileName, 'w', (err, file) => {
@@ -247,6 +170,13 @@ ipcMain.on('save:file', (event, name, value) => {
       dialog.showErrorBox('Erro escrevendo no arquivo', err.prototype.message);
     });
   });
+  return true;
 });
 
-ipcMain.on('open:file', addFile);
+ipcMain.handle('load:file', () => dialog.showOpenDialog(mainWindow, {
+  properties: ['openFile', 'multiSelections'],
+  filters: [
+    { name: 'Comma separeted values (.csv)', extensions: ['csv'] },
+    { name: 'All Files (*.*)', extensions: ['*'] }
+  ]
+}));

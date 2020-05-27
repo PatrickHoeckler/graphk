@@ -10,6 +10,7 @@
   --main-focus-color: rgb(200, 200, 210);
   --main-font-color: whitesmoke;
   --toolbar-color: rgb(64,64,64);
+  --select-color: rgb(64, 100, 160);
 
   /*Symbols*/
   --tree-folder-closed : "\1F5C0";

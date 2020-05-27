@@ -1,133 +1,181 @@
 "use strict";
 
 //    COISAS PARA AJUSTAR NO FUTURO
-// - Esse jeito de eu indexar os modos de um jeito parecido com enumeradores parece meio
-//   estranho. Pesquisar melhor pra ver se eu acho uma solução melhor ou se essa é adequada.
+//
 //
 
-//Namespace
-const graphK = {};
+const {Mode} = require('./auxiliar/mode.js')
+module.exports = {GraphK, Mode};
 
-//Colors
-graphK.color = {
-  HIGHLIGHT_NORMAL: 'dimgray',
-  HIGHLIGHT_DELETE: 'crimson',
-  HIGHLIGHT_SELECT: 'darkcyan',
-  HIGHLIGHT_BRUSHING: 'red'
-};
+const {
+  appendNewElement, getContextItems,
+} = require('./auxiliar/auxiliar.js');
+const {Window} = require('./auxiliar/window.js');
+const {Context} = require('./auxiliar/context.js');
+const {TransformSelector} = require('./auxiliar/transformSelector.js');
+const {ChartPanel} = require('./render/chartPanel.js');
+const {Control} = require('./control/control.js');
 
-//Modes
-graphK.Mode = function (startMode) {
+function GraphK() {
+  //constants
+  const modeClass = [
+    ''      ,  //mode.NORMAL
+    'select',  //mode.SELECT
+    'rename',  //mode.RENAME
+    'delete',  //mode.DELETE
+    'brush' ,  //mode.BRUSH
+    'drag'     //mode.DRAG
+  ]
+  const node = appendNewElement(null, 'section', 'graphK');
+  const mode = new Mode(Mode.prototype.NORMAL);
+  const control = new Control(mode);
+  const chartPanel = new ChartPanel(mode);
+  const tfSelector = new TransformSelector();
+
+  //Public Attributes
+
+  //Private Properties
+  var container, wrapper;
+  var brushEnabled;
+  var callParent = () => Promise.reject(new Error('callParent not set'));
+
   //Public Methods
-  this.mode = () => mode;
-  this.canChange = (newMode) => checkCallback && checkCallback(newMode);
-  this.change = function (newMode) {
-    if (mode === newMode) {return true;}
-    if (!checkCallbacks.every(check => check(newMode))) {return false;}
-    changeCallbacks.forEach(callback => callback(newMode));
-    mode = newMode;
-    return true;
+  this.node = () => node;
+  this.mode = () => mode.value();
+  this.brushEnabled = () => brushEnabled;
+  this.changeMode = mode.change;
+  this.resize = () => chartPanel.resize();
+  //  Indirect calls to control object
+  this.addToTree = control.addToTree;
+  this.renameFile = control.renameFile;
+  this.deleteFromTree = control.deleteFromTree;
+  this.getDataFromPath = control.getDataFromPath;
+  //this.updateTransforms = control.updateTransforms;
+  this.setTransforms = function (transforms) {
+    tfSelector.updateTransforms(transforms);
+    control.updateTransforms(transforms);
+  };
+  this.getTransformFromPath = control.getTransformFromPath;
+  this.getDataFromTreeElement = control.getDataFromTreeElement;
+  this.readFiles = (paths) => paths.forEach(p => control.readFile(p));
+  this.newRoutine = control.newRoutine;
+  this.renameRoutine = control.renameRoutine;
+  this.removeInRoutine = control.removeInRoutine;
+  this.addToRoutine = control.addToRoutine;
+  //  Indirect calls to chartArea object
+  this.getDataFromBrush = chartPanel.getDataFromBrush;
+  this.removeChart = chartPanel.removeChart;
+  this.clearChart = chartPanel.clearChart;
+  //  Functions to set callbacks
+  this.onCallParent = function (
+    executor = () => Promise.reject(new Error('callParent not set'))
+  ) {
+    if (typeof(executor) !== 'function') { throw new TypeError(
+      `Expected a function for the 'executor' argument. Got type ${typeof(executor)}`
+    );}
+    callParent = executor;
   }
-  this.check = newMode => {
-    let r = mode === newMode || checkCallbacks.every(check => check(newMode));
-    return r;
-  }
-  this.addChangeListener = (callback) => changeCallbacks.push(callback);
-  this.addCheckListener  = (callback) => checkCallbacks.push(callback);
-  this.removeChangeListener = (callback) => {
-    let index = changeCallbacks.indexOf(callback);
-    if (index !== -1) {changeCallbacks.splice(index, 1);}
-  }
-  this.removeCheckListener = (callback) => {
-    let index = checkCallbacks.indexOf(callback);
-    if (index !== -1) {checkCallbacks.splice(index, 1);}
-  }
+  //  Functions to change mode of operation
+  this.startDataSelect = control.startDataSelect;
+  this.stopDataSelect = control.stopDataSelect;
 
-  //Private properties
-  var mode;
-  var checkCallbacks, changeCallbacks;
-
-  //Initialize Object
-  mode = startMode;
-  checkCallbacks = [];
-  changeCallbacks = [];
-}
-
-graphK.mode = {
-  NORMAL: 0,
-  SELECT: 1,
-  RENAME: 2,
-  DELETE: 3,
-  BRUSH : 4,
-  DRAG  : 5,
-  isMode: function(mode) {
-    if (typeof(mode) !== 'number' || !Number.isInteger(mode)) {return false;}
-    return this.NORMAL <= mode && mode <= this.DRAG;
-  },
-}
-
-//Auxiliar Functions
-//  This function creates an element of a given tagName and with a given class, and appends
-//  it to the given parentElem. The element created is then returned. If 'parentElem === null'
-//  then the function will only return the created element without appending it to anything
-graphK.appendNewElement = function(parentElem = HTMLElement.prototype, tagName = '', classValue = '') {
-  let elem = document.createElement(tagName);
-  elem.classList.value = classValue;
-  if (parentElem !== null) {
-    try {parentElem.appendChild(elem);}
-    catch (err) {throw new Error("Could not append to given 'parentElement'");}
-  }
-  return elem;
-}
-//  Deep clones transforms object to store on files array
-//  using JSON stringify/parse combination first, and then
-//  looping through to also store the functions
-graphK.deepClone = function(obj) {
-  let clone = Array.isArray(obj) ? [] : {};
-  for (let i in obj) {
-    if (typeof(obj[i]) === 'object') clone[i] = graphK.deepClone(obj[i]);
-    else {
-      clone[i] = obj[i];
+  //Private Functions
+  //  Listener to be executed when the mode is about to change
+  function modeChange(newMode) {
+    node.classList.value = 'graphK';
+    if (newMode !== Mode.prototype.NORMAL) { //changing from NORMAL to other
+      node.classList.add(modeClass[newMode]);
+      if (newMode === Mode.prototype.SELECT) {
+        toolbar.node().classList.add('inactive');
+        chartPanel.node().classList.add('inactive', 'overlay');
+      }
+    }
+    else { //changing back to normal
+      if (mode.is(Mode.prototype.SELECT)) {
+        toolbar.node().classList.remove('inactive');
+        chartPanel.node().classList.remove('inactive', 'overlay');
+      }
     }
   }
-  return clone;
-}
+  function createContextMenu(event, place, detail) {
+    let items = getContextItems(place, detail);
+    if (!items) {return;}
+    let context = new Context(event.pageX, event.pageY, items, function(action) {
+      context.destroy();
+      executeContextAction(place, action, event.target);
+    });
+    context.appendTo(node);
+  }
+  function executeContextAction(place, action, target) {
+    if (!action) {return;}
+    if (place === 'chart') {
+      if (action === 'select') {
+        let data = chartPanel.getDataFromBrush(target);
+        if (!data) {return;}
+        //third argument indicates that the rename box will be opened the
+        //moment the file is created
+        control.addToTree('selection', data, true);
+      }
+      else if (action === 'remove') {chartPanel.removeChart(target);}
+      else if (action === 'clear') {chartPanel.clearChart(target);}
+    }
+    else if (place === 'navTree') {
+      if (action === 'copy') {
+        let {name, value} = control.getDataFromTreeElement(target);
+        control.addToTree(name, value, true);
+      }
+      else if (action === 'rename') {control.renameFile(target);}
+      else if (action === 'remove') {control.deleteFromTree(target);}
+      else if (action === 'save') {
+        let {name, value} = control.getDataFromTreeElement(target);
+        if (!value) {return;}
+        callParent('save-file', {name, value});
+      }
+    }
+    else if (place === 'routine') {
+      if (action === 'newR') control.newRoutine('routine', true);
+      else if (action === 'remR') control.removeInRoutine(target);
+      else if (action === 'rename') control.renameRoutine(target);
+      else if (action === 'newS') control.addToRoutine(target, 'step', true);
+      else if (action === 'remS') control.removeInRoutine(target);
+    }
+  }
+  function configureTransforms() {return new Promise((resolve) => {
+    const subWindow = new Window({
+      width: 250, height: 400,
+      parent: node, content: tfSelector.node(),
+      frame: true, frameButtons: [],
+      title: 'Choose the transforms to be used'
+    });
+    tfSelector.onSelect((transforms) => {
+      subWindow.close();
+      if (transforms) {control.updateTransforms(transforms);}
+      resolve(transforms);
+    });
+  });}
+  function respondChild(message, details = {}) {
+    if (message === 'load-file') {return callParent('load-file');}
+    if (message === 'save-file') {return callParent('save-file', details);}
+    if (message === 'configure-transforms') {return configureTransforms();}
+  }
 
-graphK.getContextItems = function(place, detail) {
-  if (place === 'navTree') {
-    //There are six possibilities for detail:
-    //folder, folder:top, folder:empty
-    //leaf, leaf:ready, leaf:broken
-    if (
-      detail === 'folder' ||
-      detail === 'leaf:broken' ||
-      detail === 'leaf'
-    ) {return null;}
-    let [where, state] = detail.split(':');
-    return [
-      {name: 'Copy to New', return: 'copy', type: state === 'empty' ? 'inactive' : undefined},
-      {name: 'Rename', return: 'rename', type: where === 'leaf' ? 'inactive' : undefined},
-      {name: 'Save',   return: 'save', type: state === 'empty' ? 'inactive' : undefined},
-      {name: 'Remove', return: 'remove'},
-    ];
-  }
-  else if (place === 'chart') {
-    return [
-      {name: 'Select Region', return: 'select', type: detail !== 'brush' ? 'inactive' : undefined},
-      {type: 'separator'},
-      {name: 'Remove', return: 'remove'},
-      {name: 'Clear', return: 'clear'}
-    ]
-  }
-  else if (place === 'routine') {
-    return [
-      {name: 'Rename', return: 'rename', type: detail === 'panel' ? 'inactive' : undefined},
-      {name: 'New Routine', return: 'newR'},
-      {name: 'Remove Routine', return: 'remR', type: detail !== 'head' ? 'inactive' : undefined},
-      {type: 'separator'},
-      {name: 'New Step', return: 'newS', type: detail === 'panel' ? 'inactive' : undefined},
-      {name: 'Remove Step', return: 'remS', type: detail !== 'step' ? 'inactive' : undefined},
-    ]
-  }
-  else {return null;}
+  //Initialize object
+  (function () {
+    mode.addCheckListener(newMode => {
+      if (!mode.isMode(newMode)) {return false;}
+      return mode.is(Mode.prototype.NORMAL) || newMode === Mode.prototype.NORMAL;
+    });
+    mode.addChangeListener(modeChange);
+
+    //create container and append objects elements to it
+    container = appendNewElement(node, 'div', 'container');
+    //wrapper = appendNewElement(container, 'div', 'wrapper');
+    container.appendChild(control.node());
+    let panelColumn = appendNewElement(container, 'div', 'panel-column');
+    panelColumn.appendChild(chartPanel.node());
+    control.setMainNode(node);
+    control.onContext(createContextMenu);
+    control.onCallParent(respondChild);
+    chartPanel.onContext(createContextMenu);
+  })();
 }

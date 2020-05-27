@@ -3,9 +3,12 @@
 //    COISAS PARA AJUSTAR NO FUTURO
 // - Tudo isso aqui tá uma bagunça, tirar um dia pra ajustar tudo de um jeito
 //   melhor
+//
 
-//This is the object that handles all 
-graphK.Chart = function(id = 0, _height = 150, bgColor = 'whitesmoke', axisColor = 'black') {
+module.exports = {Chart};
+
+const d3 = require('d3');
+function Chart(id = 0, _height = 150, bgColor = 'whitesmoke', axisColor = 'black') {
   //Private Properties
   //  d3 element selections
   var selection; //d3 selection of the main node

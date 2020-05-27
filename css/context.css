@@ -1,3 +1,7 @@
+.context-container {
+  position: absolute;
+  top: 0; left: 0;
+}
 .context-overlay {
   position: fixed;
   width: 100%;
@@ -6,26 +10,38 @@
   left: 0;
 }
 .context-menu {
+  display: none;
+  z-index: 3000;
+  color: black;
   background-color: white;
   box-sizing: border-box;
   box-shadow: 4px 4px 4px -4px;
-  position: fixed;
+  position: absolute;
+  width: max-content;
   border: 1px solid #e0e0e0;
   font-family: 'Segoe WPC', 'Segoe UI', sans-serif;
   font-size: 12px;
   user-select: none;
 }
+.context-menu.open {display: flex;}
 .context-menu ul.item-list{
   list-style-type: none;
   padding: 3px 0px;
   margin: 0px;
 }
-.context-menu li.item {display: flex;}
-.context-menu a.item-content {flex-grow: 1; padding: 5px 20px;}
-.context-menu a.item-content.active:hover {background-color: #e0e0e0;}
-.context-menu a.item-content.inactive {color: darkgray;}
-.context-menu a.item-content.separator {
+.context-menu .item {display: flex; position: relative;}
+.context-menu .item.active:hover {background-color: #e0e0e0;}
+.context-menu .item > .item-label {flex-grow: 1; padding: 5px 20px;}
+.context-menu .item.inactive > .item-label{color: darkgray;}
+.context-menu .item.separator > .item-label {
   padding: 0;
   margin: 5px 10px;
   border-bottom: 1px solid darkgray;
 }
+.context-menu .item > .indicator {
+  align-self: center;
+  padding-right: 5px;
+  font-size: x-small;
+  opacity: 0.6;
+}
+.context-menu .item > .indicator::before {content: '\23F5';}
