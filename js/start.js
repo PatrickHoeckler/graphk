@@ -39,7 +39,6 @@ var graphK;
 window.onload = function() {
   graphK = new GraphK();
   document.body.appendChild(graphK.node());
-  //graphK.onSave((name, value) => ipcRenderer.send('save:file', name, value));
   graphK.onCallParent(function (message, details) {
     if (message === 'load-file') {return ipcRenderer.invoke('load:file');}
     if (message === 'save-file') {
@@ -107,10 +106,6 @@ window.addEventListener('keyup', function (e) {
     //cancels selection if in middle of selecting
     if (graphK.mode() === Mode.prototype.SELECT) {
       graphK.stopDataSelect(true);
-    }
-    //stops brushing if brush mode is enabled
-    else if (graphK.brushEnabled) {
-      graphK.setBrush(false);
     }
   }
 });

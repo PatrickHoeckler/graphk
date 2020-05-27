@@ -35,22 +35,13 @@ function GraphK() {
   //Public Attributes
 
   //Private Properties
-  var container, wrapper;
-  var brushEnabled;
   var callParent = () => Promise.reject(new Error('callParent not set'));
 
   //Public Methods
   this.node = () => node;
   this.mode = () => mode.value();
-  this.brushEnabled = () => brushEnabled;
   this.changeMode = mode.change;
   this.resize = () => chartPanel.resize();
-  //  Indirect calls to control object
-  this.addToTree = control.addToTree;
-  this.renameFile = control.renameFile;
-  this.deleteFromTree = control.deleteFromTree;
-  this.getDataFromPath = control.getDataFromPath;
-  //this.updateTransforms = control.updateTransforms;
   this.setTransforms = function (transforms) {
     tfSelector.updateTransforms(transforms);
     control.updateTransforms(transforms);
@@ -58,14 +49,6 @@ function GraphK() {
   this.getTransformFromPath = control.getTransformFromPath;
   this.getDataFromTreeElement = control.getDataFromTreeElement;
   this.readFiles = (paths) => paths.forEach(p => control.readFile(p));
-  this.newRoutine = control.newRoutine;
-  this.renameRoutine = control.renameRoutine;
-  this.removeInRoutine = control.removeInRoutine;
-  this.addToRoutine = control.addToRoutine;
-  //  Indirect calls to chartArea object
-  this.getDataFromBrush = chartPanel.getDataFromBrush;
-  this.removeChart = chartPanel.removeChart;
-  this.clearChart = chartPanel.clearChart;
   //  Functions to set callbacks
   this.onCallParent = function (
     executor = () => Promise.reject(new Error('callParent not set'))
@@ -86,14 +69,12 @@ function GraphK() {
     if (newMode !== Mode.prototype.NORMAL) { //changing from NORMAL to other
       node.classList.add(modeClass[newMode]);
       if (newMode === Mode.prototype.SELECT) {
-        toolbar.node().classList.add('inactive');
-        chartPanel.node().classList.add('inactive', 'overlay');
+        node.classList.add('cursor-pointer');
       }
     }
     else { //changing back to normal
       if (mode.is(Mode.prototype.SELECT)) {
-        toolbar.node().classList.remove('inactive');
-        chartPanel.node().classList.remove('inactive', 'overlay');
+        node.classList.add('cursor-pointer');
       }
     }
   }
@@ -168,8 +149,7 @@ function GraphK() {
     mode.addChangeListener(modeChange);
 
     //create container and append objects elements to it
-    container = appendNewElement(node, 'div', 'container');
-    //wrapper = appendNewElement(container, 'div', 'wrapper');
+    let container = appendNewElement(node, 'div', 'container');
     container.appendChild(control.node());
     let panelColumn = appendNewElement(container, 'div', 'panel-column');
     panelColumn.appendChild(chartPanel.node());

@@ -1,3 +1,5 @@
+.graphK.blur .panel {pointer-events: none; opacity: 0.4;}
+.graphK.blur .panel.focus {pointer-events: all; opacity: 1;}
 .panel-column {
   display: flex;
   flex-direction: column;

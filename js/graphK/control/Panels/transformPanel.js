@@ -47,16 +47,18 @@ function TransformPanel(modeObj) {
     if (!mode.change(mode.SELECT)) {throw new Error(
       'Could not change to select mode'
     );}
+    mode.lock();
     selectTreeElem = function(treeElem) {
-      if (treeElem === null) {return resolve({canceled: true});}
       let isTopFolder = navTree.isTopFolder(treeElem);
-      if (!isTopFolder && !treeElem.classList.contains('ready')) {return;}
+      if (treeElem && !isTopFolder && !treeElem.classList.contains('ready')) {return;}
       selectTreeElem = () => null;
       //gets path in the tree of the element clicked
+      mode.unlock();
       if (!mode.change(mode.NORMAL)) {throw new Error(
         'Could not revert back to normal mode at the end of Data Selection. Review ' + 
         'the check callbacks of the Mode object to see which one did not allow the change'
       );};
+      if (treeElem === null) {return resolve({canceled: true});}
       let data = getDataFromPath(navTree.findPath(treeElem));
       treeElem.classList.remove('highlight');
       return resolve({data: data, canceled: false});

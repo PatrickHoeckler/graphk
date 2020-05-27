@@ -30,8 +30,6 @@
 
 .graphK .highlight {background-color: var(--highlight-color, transparent);}
 .graphK .selected {background-color: var(--select-color, transparent);}
-.graphK .inactive {pointer-events: none;}
-.graphK .overlay {opacity: 0.3;}
 
 .graphK .toolbar {
   display: flex;
