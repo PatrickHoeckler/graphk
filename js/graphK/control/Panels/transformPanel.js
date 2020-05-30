@@ -59,9 +59,10 @@ function TransformPanel(modeObj) {
         'the check callbacks of the Mode object to see which one did not allow the change'
       );};
       if (treeElem === null) {return resolve({canceled: true});}
-      let data = getDataFromPath(navTree.findPath(treeElem));
+      let path = navTree.findPath(treeElem);
+      let data = getDataFromPath(path);
       treeElem.classList.remove('highlight');
-      return resolve({data: data, canceled: false});
+      return resolve({data, path, canceled: false});
     }
   });
   this.stopDataSelect = () => selectTreeElem(null);

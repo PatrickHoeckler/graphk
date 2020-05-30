@@ -47,6 +47,7 @@ function GraphK() {
     control.updateTransforms(transforms);
   };
   this.getTransformFromPath = control.getTransformFromPath;
+  this.getDataFromPath = control.getDataFromPath;
   this.getDataFromTreeElement = control.getDataFromTreeElement;
   this.readFiles = (paths) => paths.forEach(p => control.readFile(p));
   //  Functions to set callbacks

@@ -23,7 +23,6 @@ function Control(modeObj) {
   const tfPanel = new TransformPanel(mode);
   const rtPanel = new RoutinePanel(mode);
   const navTree = new NavTree();
-  const argsSelector = new ArgsSelector();
 
   //Public Attributes
 
@@ -140,35 +139,31 @@ function Control(modeObj) {
   return new Promise((resolve) => {
     //if no arguments needed, just calls the callback to calculate transform
     if (!argsFormat) {return resolve({args: null});}
-    const argWindow = new Window({
-      width: 400, height:  90 + 60 * argsFormat.length,
-      frame: !!title, title: title, frameButtons: [],
-      parent: mainNode, content: argsSelector.node()
-    })
-    argsSelector.onDataSelect(function (callback) {
-      argWindow.hide();
-      tfPanel.startDataSelect(function (...args) {
-        callback(...args);
-        argWindow.show();
-      });
-    });
-    argsSelector.setArgsFormat(argsFormat);
-    argsSelector.onEndSelect(function(args) {
-      argWindow.close();
-      if (!args) {return resolve({canceled: true});}
-      for (let i = 0; i < argsFormat.length; i++) {
-        let {name, type} = argsFormat[i];
-        if (type === 'data') {
-          //in this situation args[name] holds the path to the data on the file tree,
-          //we need to get the data using this path. First we parse the values of
-          //the path back from the stringify operation made before.
-          let path = JSON.parse(args[name]);
-          //Now we use the path to get the data. Since we are only interested in
-          //the (x,y) points of the curve, we just get the key 'value'.
-          args[name] = tfPanel.getDataFromPath(path).value;
+    const argsSelector = new ArgsSelector(argsFormat, mainNode, title);
+    argsSelector.onCallParent(function (message, details) {
+      if (message === 'get-data') {return tfPanel.startDataSelect();}
+      else if (message === 'end-selection') {
+        argsSelector.close();
+        let {args, canceled} = details;
+        if (canceled) {
+          resolve({canceled: true});
+          return Promise.resolve(null);
         }
+        for (let i = 0; i < argsFormat.length; i++) {
+          let {name, type} = argsFormat[i];
+          if (type === 'data') {
+            //in this situation args[name] holds the path to the data on the file tree,
+            //we need to get the data using this path. First we parse the values of
+            //the path back from the stringify operation made in the argsSelector.
+            let path = JSON.parse(args[name]);
+            //Now we use the path to get the data. Since we are only interested in
+            //the (x,y) points of the curve, we just get the key 'value'.
+            args[name] = tfPanel.getDataFromPath(path).value;
+          }
+        }
+        resolve({args: args});
+        return Promise.resolve(null);
       }
-      resolve({args: args});
     });
   });}
 

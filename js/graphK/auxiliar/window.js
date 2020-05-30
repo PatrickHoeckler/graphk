@@ -8,7 +8,11 @@ module.exports = {Window};
 
 const {appendNewElement, checkType} = require('./auxiliar.js');
 function Window(options = {}) {
-  //Public Attributes
+  //Private Properties
+  //  main elements of context menu
+  var wNode, wContainer, wContent; //window elements
+  var wTop, wLeft, wWidth, wHeight; //window position and size
+  var closeCallback;
 
   //Public Methods
   this.appendContent = (elem) => wContent.appendChild(elem);
@@ -159,12 +163,6 @@ function Window(options = {}) {
     return [width, height];
   }
   function getPos() {return [wLeft, wTop];}
-
-  //Private Properties
-  //  main elements of context menu
-  var wNode, wContainer, wContent; //window elements
-  var wTop, wLeft, wWidth, wHeight; //window position and size
-  var closeCallback;
 
   //Initialize object
   (function () {
