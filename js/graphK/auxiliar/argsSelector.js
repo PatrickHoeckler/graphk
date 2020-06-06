@@ -6,8 +6,8 @@
 
 module.exports = {ArgsSelector};
 
-const {appendNewElement} = require('../auxiliar/auxiliar.js');
-const {Window} = require('../auxiliar/window.js');
+const {appendNewElement} = require('./auxiliar.js');
+const {Window} = require('./window.js');
 function ArgsSelector(argsFormat, parent, title = 'Select Arguments') {
   //Private Properties
   var argWindow, argsBox, bWrapper;

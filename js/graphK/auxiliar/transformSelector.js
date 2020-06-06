@@ -6,7 +6,7 @@
 
 module.exports = {TransformSelector};
 
-const {NavTree} = require('../control/navTree.js');
+const {NavTree} = require('./navTree.js');
 const {appendNewElement} = require('./auxiliar.js');
 
 function TransformSelector() {
@@ -99,12 +99,16 @@ function TransformSelector() {
     cancel.setAttribute('name', 'cancel');
 
     navTree.node().addEventListener('mouseover', function (e) {
+      if (mouseOverElem) {mouseOverElem.classList.remove('highlight');}
       mouseOverElem = navTree.getContainingElement(e.target);
-      if (mouseOverElem) {mouseOverElem.style.backgroundColor = 'rgb(70,70,70)';}
+      if (mouseOverElem) {mouseOverElem.classList.add('highlight');}
     });
     navTree.node().addEventListener('mouseout', function (e) {
       mouseOverElem = navTree.getContainingElement(e.target);
-      if (mouseOverElem) {mouseOverElem.style.backgroundColor = '';}
+      if (mouseOverElem) {
+        mouseOverElem.classList.remove('highlight');
+        mouseOverElem = null;
+      }
     });
     navTree.node().addEventListener('click', function (e) {
       let elem = navTree.getContainingElement(e.target);

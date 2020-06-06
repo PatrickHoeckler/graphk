@@ -64,11 +64,9 @@ function Window(options = {}) {
     wNode = appendNewElement(null, 'div', 'window');
     appendNewElement(wNode, 'div', 'window-overlay');
     wContainer = appendNewElement(wNode, 'div', 'window-container');
-    let header = appendNewElement(wContainer, 'div', 'window-header');
-    wContent = appendNewElement(wContainer, 'div', 'window-contents');
     //Creating window frame if specified in options
     if (frame) {
-      let frameElem = appendNewElement(header, 'div', 'window-frame');
+      let frameElem = appendNewElement(wContainer, 'div', 'window-frame');
       let titleElem = appendNewElement(frameElem, 'span', 'window-title');
       titleElem.addEventListener('mousedown', handleMove);
       if (typeof(title) === 'string') {titleElem.innerHTML = title;}
@@ -84,6 +82,7 @@ function Window(options = {}) {
         }
       }
     }
+    wContent = appendNewElement(wContainer, 'div', 'window-contents');
     //Resizing window and adjusting position
     wTop = y; wLeft = x;
     this.resize(width, height);

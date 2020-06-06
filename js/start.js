@@ -29,7 +29,7 @@
 
 //Modules - all these are loaded and stored in the global object via the preload.js file
 const {path, ipcRenderer} = preloadedModules;
-const {GraphK, Mode} = require('../js/graphK/graphK.js')
+const {GraphK, Mode} = require('../js/graphK/graphK.js');
 
 //REMOVER ESSA VARIÁVEL DO ESCOPO GLOBAL NO FUTURO. SÓ DEIXEI AQUI PRA FACILITAR O DEBUG
 var graphK;
@@ -38,7 +38,8 @@ var graphK;
 
 window.onload = function() {
   graphK = new GraphK();
-  document.body.appendChild(graphK.node());
+  graphK.appendTo(document.body);
+  //document.body.appendChild(graphK.node());
   graphK.onCallParent(function (message, details) {
     if (message === 'load-file') {return ipcRenderer.invoke('load:file');}
     if (message === 'save-file') {

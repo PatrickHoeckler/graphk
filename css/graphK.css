@@ -1,105 +1,19 @@
 /*Styles for the chart container and its elements*/
 .graphK {
+  color: var(--font-color);
+  font-family: var(--font-family);
   position: relative;
   overflow: hidden;
-  background-color: var(--main-bg-color, black);
-  color: var(--main-font-color, whitesmoke);
   user-select: none;
-  font-family: 'Segoe WPC', 'Segoe UI', sans-serif;
-  height: 100%;
+  width: 100%; height: 100%;
 }
 .graphK .bold {font-weight: bold;}
 .graphK .bolder {font-weight: bolder;}
 .graphK *::-webkit-scrollbar {width: 8px;}
-.graphK *::-webkit-scrollbar-thumb {background-color: #555;}
-.graphK *::-webkit-scrollbar-thumb:hover {background-color: #888;}
-
-.graphK .container {
-  background-color: var(--main-bg-color, lightgray);
-  box-sizing: border-box;
-  flex-direction: row;
-  display: flex;
-  height: 100%; width: 100%;
-}
-.graphK .wrapper {
-  display: flex;
-  flex-grow: 1;
-  height: 0;
-  width: 100%;
-}
-
+.graphK *::-webkit-scrollbar-thumb {background-color: var(--scroll-color);}
+.graphK *::-webkit-scrollbar-thumb:hover {background-color: var(--scroll-hover-color);}
 .graphK .highlight {background-color: var(--highlight-color, transparent);}
 .graphK .selected {background-color: var(--select-color, transparent);}
-
-.graphK .toolbar {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  background-color: var(--toolbar-color, lightgray);
-  width: 100%;
-  height: 28px;
-}
-.graphK .toolbar>.gpk {
-  display: flex;
-  width: 26px;
-  align-items: center;
-  justify-content: center;
-  margin: 0px 3px;
-}
-.graphK .toolbar>.gpk.pressed {
-  pointer-events: all;
-  outline-width: 4px;
-  outline-offset: -3px;
-  outline-style: groove;
-  outline-color: rgb(100,100,100);
-  background-color: rgb(50, 50, 50);
-}
-.graphK .toolbar>.gpk.pressed.highlight {
-  outline-color: rgb(120,120,120);
-  background-color: rgb(70, 70, 70);
-}
-
-/*** chart-control ***/
-.graphK .chart-control {
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  background-color: var(--main-medium-color, lightgray);
-  box-sizing: border-box;
-  width: 20%;
-  height: 100%;
-}
-.graphK .chart-control .wrapper {
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-  height: 100%;
-}
-.chart-control .rename {
-  box-sizing: border-box;
-  border: none;
-  flex-grow: 1;
-  width: 0px;
-  background-color: gray;
-  color: whitesmoke;
-  font-family: var(--main-font-family, Segoe WPC, Segoe UI, sans-serif);
-  font-size: inherit;
-  padding: 0px;
-  margin-left: 4px;
-  margin-right: 2px;
-}
-
-
-/*** chart-space ***/
-.graphK .chart-space {
-  flex-grow: 1; /*stretchs to take the rest of the width on the container*/
-  background-color: var(--main-dark-color, lightgray);
-  box-sizing: border-box;
-  padding: 4px;
-  height: 100%;
-  overflow-y: auto;
-}
-/******************/
 
 /*** chart-body ***/
 .graphK .chart-body {
@@ -116,14 +30,6 @@
   transform: translateY(0px);
 }
 
-.graphK .width-resizer{
-  cursor: e-resize;
-  width: 8px;
-  height: 100%;
-  margin-right: -8px;
-  transform: translateX(0px);
-}
-
 .graphK           .brush>.overlay {cursor: auto;}
 .graphK .inactive .brush>.overlay {pointer-events: none;}
 .graphK.drag      .brush>.overlay {pointer-events: none;}
@@ -134,37 +40,33 @@
 }
 
 /**** modes of operation ****/
-.graphK        {--highlight-color: rgb(70, 70, 70);}
-.graphK.delete {--highlight-color: crimson;}
-.graphK.select {--highlight-color: darkcyan;}
-.graphK.drag   {--highlight-color: darkgreen;}
+.graphK        {--highlight-color: var(--highlight-normal);}
+.graphK.delete {--highlight-color: var(--highlight-delete);}
+.graphK.select {--highlight-color: var(--highlight-select);}
+.graphK.drag   {--highlight-color: var(--highlight-drag);}
 /****************************/
 
 .graphK .button-wrapper>button {
-  margin: 0px 4px;
   background-color: whitesmoke;
   border: 1px outset lightgray;
-  font-family: var(--main-font-family, Monospace);
+  margin: 0px 4px;
   font-size: small;
 }
 .graphK .button-wrapper>button:hover {border-style: inset;}
 
 /*Transform Selector*/
 .graphK .transform-selector {
+  display: flex; flex-direction: column;
   box-sizing: border-box;
-  padding: 4px;
-  display: flex;
-  flex-direction: column;
-  background-color: var(--main-bg-color, lightgray);
   width: 100%; height: 100%;
+  padding: 4px;
 }
-
 .transform-selector .checkbox {
   display: flex; box-sizing: border-box;
   align-items: center; justify-content: center;
   background-color: whitesmoke;
   min-width: 10px; height: 10px;
-  border-radius: 2px;
+  border-radius: 1px;
   margin-right: 5px;
 }
 .transform-selector .checkbox:hover {background-color: rgb(200,200, 200);}
@@ -172,11 +74,12 @@
   content: ""; height: 0; width: 0;
   border: 2px solid rgb(70,70,70);
 }
-
 .transform-selector>.tree-wrapper { 
+  border-color: var(--window-frame-color);
+  border-width: 2px;
+  border-style: groove;
   flex-grow: 1;
   overflow: auto;
-  border: 1px solid gray;
   padding-left: 6px;
 }
 .transform-selector>.button-wrapper {
@@ -188,17 +91,16 @@
 
 /*Arguments Selector*/
 .graphK .args-selector {
-  background-color: var(--main-bg-color, lightgray);
   box-sizing: border-box;
   flex-direction: column;
   display: flex;
   padding: 10px;
   height: 100%; width: 100%;
 }
-
 .graphK .args-selector>.args-box {
-  border: 3px groove;
-  border-color: var(--main-light-color, whitesmoke);
+  border-color: var(--window-frame-color);
+  border-width: 2px;
+  border-style: groove;
   flex-grow: 1;
   display: flex;
   flex-direction: column;
@@ -206,11 +108,9 @@
   box-sizing: border-box;
   overflow-y: scroll;
 }
-
 .graphK .args-selector>.button-wrapper {
   padding-top: 10px; align-self: flex-end;
 }
-
 .arg-wrapper {
   box-sizing: border-box;
   padding: 16px;
@@ -219,7 +119,6 @@
   flex-direction: row;
   width: 100%;
 }
-
 .arg-wrapper .arg-text {
   width: 30%;
   text-overflow: ellipsis;
@@ -232,7 +131,7 @@
 }
 .arg-wrapper .arg-input {
   flex-grow: 1;
-  transition: background 300ms;
+  transition: background-color 300ms;
 }
 
 .arg-wrapper .arg-input.warning {

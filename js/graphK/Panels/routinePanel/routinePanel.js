@@ -8,7 +8,7 @@ module.exports = {RoutinePanel};
 
 const {appendNewElement, selectDataInRange} = require('../../auxiliar/auxiliar.js');
 const {Context} = require('../../auxiliar/context.js');
-const {Panel} = require('./panel.js');
+const {Panel} = require('../../PanelManager/panel.js');
 
 function RoutinePanel(modeObj) {
   if (modeObj === null || typeof(modeObj) !== 'object') {throw new Error(
@@ -266,7 +266,7 @@ function RoutinePanel(modeObj) {
       {className: 'icon-x'   , tooltip: 'Remove'},
     ]);
     toolbar = this.node().getElementsByClassName('panel-toolbar')[0];
-    pContents = this.node().getElementsByClassName('panel-contents')[0];
+    pContents = this.node().getElementsByClassName('panel-body')[0];
     pContents.classList.add('routine-panel');
     updateToolbarButtons(0);
 

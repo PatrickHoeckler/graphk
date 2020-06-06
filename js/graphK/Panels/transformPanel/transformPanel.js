@@ -9,8 +9,8 @@
 module.exports = {TransformPanel};
 
 const {appendNewElement} = require('../../auxiliar/auxiliar.js');
-const {NavTree} = require('../navTree.js');
-const {Panel} = require('./panel.js');
+const {NavTree} = require('../../auxiliar/navTree.js');
+const {Panel} = require('../../PanelManager/panel.js');
 const d3 = require('d3');
 const fs = require('fs');
 

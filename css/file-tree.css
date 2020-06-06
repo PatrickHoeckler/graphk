@@ -1,5 +1,4 @@
 .file-tree {
-  color: var(--main-font-color, whitesmoke);
   font-size: 14px;
   overflow-x: hidden;
 }

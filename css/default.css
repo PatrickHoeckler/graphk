@@ -1,0 +1,46 @@
+/*
+  This file contains the default values for the properties used in the program.
+  This values can be overriden by the file 'theme.css'. This will allow for easy
+  customization of the program appearance.
+  At the moment this functionality is very limited, need more work in the future.
+*/
+
+:root {
+  /*Fonts*/
+  --font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-color:rgb(240, 240, 240);
+  
+  /*Colors*/
+  /*  Panels  */
+  --main-bg-color:rgb(30, 30, 30);
+  --panel-color      :rgb(40, 40, 45);
+  --panel-frame-color:rgb(60, 60, 70);
+  --panel-hover-color:rgb(50, 50, 60);
+  --dock-light-color :rgb(80, 80, 100);
+  /*  Window  */
+  --window-border-color:rgb(60, 60, 70);
+  --window-frame-color :rgb(60, 60, 70);
+  --window-hover-color :rgb(50, 50, 60);
+  --window-title-color :rgb(240, 240, 240);
+  --window-bg-color    :rgb(40, 40, 45);
+  /*  Scrollbar  */
+  --scroll-color      :rgb(60, 60, 70);
+  --scroll-hover-color:rgb(75, 75, 90);
+  /*  Highlight given mode */
+  --highlight-normal:rgb(75, 75, 90);
+  --highlight-delete:crimson;
+  --highlight-select:darkcyan;
+  --highlight-drag  :darkgreen;
+  /*  Misc  */
+  --select-color:rgb(64, 100, 160);
+
+  /*Symbols*/
+  --tree-folder-closed : "\1F5C0";
+  --tree-folder-open   : "\1F5C1"; 
+  --tree-folder-empty  : "\1F5CB"; 
+  --tree-pkg-open    : "\25EB";
+  --tree-pkg-closed  : "\25F0";
+  --tree-leaf        : "\25FB";
+  --tree-leaf-ready  : "\25FC";
+  --tree-leaf-broken : "\2715";
+}

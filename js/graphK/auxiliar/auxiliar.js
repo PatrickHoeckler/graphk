@@ -7,6 +7,7 @@
 module.exports = {
   appendNewElement,
   getContextItems,
+  changePosition,
   selectDataInRange,
   checkType
 }
@@ -62,6 +63,16 @@ function getContextItems(place, detail) {
   }
   else {return null;}
 }
+
+//change element position in a vector and shift other elements accordingly
+function changePosition(vector, oldId, newId) {
+  let temp = vector[oldId];
+  for (let i = oldId; i < newId; i++) {vector[i] = vector[i + 1];}
+  for (let i = oldId; i > newId; i--) {vector[i] = vector[i - 1];}
+  vector[newId] = temp;
+  return vector;
+}
+
 
 //returns all points of data that are between low and high
 //if low === undefined, there will be no lower bound

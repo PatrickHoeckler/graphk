@@ -6,10 +6,8 @@
 
 module.exports = {ChartPanel};
 
-const {appendNewElement} = require('../auxiliar/auxiliar.js');
-const {Panel} = require('../control/Panels/panel.js');
+const {Panel} = require('../../PanelManager/panel.js');
 const {Chart} = require('./chart.js');
-
 const strokeColor = [
   //Color Code | Color name
   "#1e90ff",  //DodgerBlue
@@ -189,7 +187,7 @@ function ChartPanel(modeObj) {
       {className: 'icon-x'   , tooltip: 'Remove Chart'},
     ]);
     toolbar = this.node().getElementsByClassName('panel-toolbar')[0];
-    pContents = this.node().getElementsByClassName('panel-contents')[0];
+    pContents = this.node().getElementsByClassName('panel-body')[0];
     pContents.classList.add('chart-panel');
     updateToolbarButtons(0);
     this.addChart();

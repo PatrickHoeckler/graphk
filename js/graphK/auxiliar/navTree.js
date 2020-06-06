@@ -6,7 +6,7 @@
 
 module.exports = {NavTree};
 
-const {appendNewElement} = require('../auxiliar/auxiliar.js');
+const {appendNewElement} = require('./auxiliar.js');
 function NavTree() {
   //Public Methods
   this.node  = () => node;
