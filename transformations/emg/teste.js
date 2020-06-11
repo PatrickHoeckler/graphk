@@ -14,8 +14,8 @@ function intTrap(data, startIndex, endIndex) {
   return integral;
 }
 
-exports.name = 'Teste';
-exports.func = function(data, {extremes}) {
+export const name = 'Teste';
+export const func = function(data, {extremes}) {
   //Find the extremes that belong to the range of data
   let dataExtremes = [];
   let lastSample = 1;
@@ -79,7 +79,7 @@ exports.func = function(data, {extremes}) {
   for (let key in out.max) {out.max[key] /= n; out.integral[key] /= n;}
   return out;
 }
-exports.type = 'no-plot';
-exports.args = [
+export const type = 'no-plot';
+export const args = [
   {name: 'extremes', type: 'data', tooltip: 'Vetor de extremos de um sinal'},
 ];

@@ -5,9 +5,9 @@
 //getPolynomial function based on:
 //https://www.mathworks.com/help/matlab/ref/poly.html
 
-exports.name = 'Butterworth';
-exports.tooltip = 'Filtro Butterworth';
-exports.func = function (data, {order, fc, unit, dt}) {
+export const name = 'Butterworth';
+export const tooltip = 'Filtro Butterworth';
+export const func = function (data, {order, fc, unit, dt}) {
   if (!dt) dt = Math.abs(data[1][0] - data[0][0]);
   const fs = 1 / dt;
   const useHz = unit === 'Hz';
@@ -91,8 +91,8 @@ exports.func = function (data, {order, fc, unit, dt}) {
   b = b.map(d => K * d);
   return [b, a];
 };
-exports.type = 'no-plot';
-exports.args = [
+export const type = 'no-plot';
+export const args = [
   {name: 'order', type: 'number'},
   {name: 'fc', type: 'number', tooltip: 'Frequência de corte'},
   {

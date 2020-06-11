@@ -1,8 +1,8 @@
 "use strict";
 
-exports.name = 'Activation time';
-exports.tooltip = 'Compara o sinal a um limiar e calcula o total do tempo em que esse sinal ultrapassou o limiar';
-exports.func = function(data, {lim, comparison, method}) {
+export const name = 'Activation time';
+export const tooltip = 'Compara o sinal a um limiar e calcula o total do tempo em que esse sinal ultrapassou o limiar';
+export const func = function(data, {lim, comparison, method}) {
   const useHigher = comparison === 'Higher';
   const useAbs = method === 'Absolute';
   if (useAbs) {lim = Math.abs(lim);}
@@ -16,8 +16,8 @@ exports.func = function(data, {lim, comparison, method}) {
   var dt = Math.abs(data[1][0] - data[0][0]);
   return exceedCount * dt;
 }
-exports.type = 'no-plot';
-exports.args = [
+export const type = 'no-plot';
+export const args = [
   {
     name: 'lim',
     type: 'number',

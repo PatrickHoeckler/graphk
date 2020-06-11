@@ -5,9 +5,9 @@
 //Return RC low-pass filter output samples, given input samples,
 //time interval dt, and time constant RC
 
-exports.name = 'Low pass';
-exports.tooltip = 'Filtro passa baixas'
-exports.func = function (data, {fc, n, dt, method}) {
+export const name = 'Low pass';
+export const tooltip = 'Filtro passa baixas'
+export const func = function (data, {fc, n, dt, method}) {
   //constants
   if (n === undefined) n = 1;
   if (dt === undefined) dt = Math.abs(data[1][0] - data[0][0]);
@@ -34,7 +34,7 @@ exports.func = function (data, {fc, n, dt, method}) {
   return out;
 };
 
-exports.args = [
+export const args = [
   {name: 'fc', type: 'number', tooltip: 'Frequência de corte'},
   {name: 'n' , type: 'number', optional: true, tooltip: 'Número de vezes que o filtro será aplicado. Valor padrão: 1'},
   {

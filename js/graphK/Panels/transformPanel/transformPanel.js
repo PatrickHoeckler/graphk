@@ -24,6 +24,7 @@ function TransformPanel(modeObj) {
   const filenameFormat = /^[^\\/?<>:|\"*^]{1,128}$/;
   const navTree =  new NavTree(); //navigation tree object;
   const selectedElems = [];
+  const observer = new MutationObserver(reverseMaliciousChanges);
   //Public Attributes
 
   //Private Properties
@@ -31,6 +32,7 @@ function TransformPanel(modeObj) {
   var files = [];
   var transforms;
   var mouseOverElem; //used to change highlight on change of mode
+  var maliciousFunction; //indicates if transformation is a malicious file
   //  callback functions
   var contextCallback;
   var callParent = () => Promise.reject(new Error('callParent not set'));
@@ -437,6 +439,59 @@ function TransformPanel(modeObj) {
     else {return;}
     toolbarLevel = level;
   }
+  function reverseMaliciousChanges(mutations) {
+    maliciousFunction = true;
+    for (let mutation of mutations) {
+      if (mutation.type === 'attributes') {
+        mutation.target.setAttribute(mutation.attributeName, mutation.oldValue);
+      }
+      else if (mutation.type === 'characterData') {
+        mutation.target.innerHTML = mutation.oldValue;
+      }
+      else if (mutation.type === 'childList') {
+        for (let elem of mutation.addedNodes) {elem.remove();}
+        for (let elem of mutation.removedNodes) {
+          mutation.target.insertBefore(elem, mutation.nextSibling);
+        }
+      }
+    }
+    throw null;
+  }
+  function calculateTransformSafely(func, args, data) {
+    maliciousFunction = false;
+    let alertHolder         = alert;
+    let setTimeoutHolder    = setTimeout;
+    let setIntervalHolder   = setInterval;
+    let clearTimeoutHolder  = clearTimeout;
+    let clearIntervalHolder = clearInterval;
+    alert = clearTimeout = clearInterval = setTimeout = setInterval = 
+    function () {maliciousFunction = true; throw null;};
+    observer.observe(document.documentElement, {
+      attributes: true, attributeOldValue: true,
+      characterData: true, characterDataOldValue: true,
+      childList: true, subtree: true
+    });
+
+    let value;
+    try {try {value = func(data, args);}
+    finally {
+      alert         = alertHolder;
+      setTimeout    = setTimeoutHolder;
+      setInterval   = setIntervalHolder;
+      clearTimeout  = clearTimeoutHolder;
+      clearInterval = clearIntervalHolder;
+      let queue = observer.takeRecords();
+      observer.disconnect();
+      if (queue.length) {try {reverseMaliciousChanges(queue);} catch{}}
+      if (maliciousFunction) {alert(
+        'WARNING: This transformation tried to breach this computer security ' +
+        'by using functions not allowed by this program. No damage was done, ' +
+        "but it's recommended that this transformation file and any other " + 
+        'coming from the same origin be removed from this computer.'
+      ); return null;}
+    }} catch (err) {throw err;}
+    return value;
+  }
   
   //Initialize object
   (function() {
@@ -506,16 +561,10 @@ function TransformPanel(modeObj) {
     navTree.node().addEventListener('dblclick', (e) => {
       let elem = navTree.getContainingElement(e.target);
       if (!elem) {return;}
-
-      //if in delete mode
       if (mode.is(mode.DELETE)) {deleteFromTree(elem);}
-      //if in select mode
       else if (mode.is(mode.SELECT)) {selectTreeElem(elem);}
-      //if in normal mode
       else if (mode.is(mode.NORMAL)){
-        //if elem is not a leaf ignores the event;
         if (!elem.classList.contains('leaf')) {return;}
-        //gets path in the tree of the element clicked
         let path = navTree.findPath(elem);
         //last element of path will be the id of the transform selected in
         //relation to its parent folder, will be removed from path to be used later
@@ -531,17 +580,11 @@ function TransformPanel(modeObj) {
         if (elem.classList.contains('ready') && !argsFormat) {return;}
         if (elem.classList.contains('broken')) {return;}
         
-        //calls function to get arguments for the transformation (the format of these arguments are
-        //given as the first parameter to the function 'argsFormat'). This function must be set as a
-        //callback outside of this object.
-        //The second parameter is another callback function that needs to be called when the arguments
-        //are found to calculate the transformation given the just found arguments.
         callParent('arguments', {argsFormat: argsFormat}).then(({args, canceled}) => {
           if (canceled) {return;}
           let value;
           try {
-            //calculates transformation value using transform function on file data
-            value = transform.func(files[fileId].value, args);
+            value = calculateTransformSafely(transform.func, args, files[fileId].value);
           } catch (err) {
             //if there was some error executing the function, changes the tree element to alert
             //that the transformation functions has some error in its code

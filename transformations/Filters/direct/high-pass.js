@@ -5,9 +5,9 @@
 //Return RC high-pass filter output samples, given input samples,
 //time interval dt, and time constant RC
 
-exports.name = 'High pass';
-exports.tooltip = 'Filtro passa altas'
-exports.func = function (data, {fc, n, dt}) {
+export const name = 'High pass';
+export const tooltip = 'Filtro passa altas'
+export const func = function (data, {fc, n, dt}) {
   //constants
   if (n === undefined) n = 1;
   if (dt === undefined) dt = Math.abs(data[1][0] - data[0][0]);
@@ -29,7 +29,7 @@ exports.func = function (data, {fc, n, dt}) {
   }
   return out;
 };
-exports.args = [
+export const args = [
   {name: 'fc', type: 'number', tooltip: 'Frequência de corte'},
   {name: 'n' , type: 'number', optional: true, tooltip: 'Número de vezes que o filtro será aplicado. Valor padrão: 1'},
   {name: 'dt', type: 'number', optional: true, tooltip: 'Intervalo de tempo entre amostras. Se um valor não for dado, o intervalo entre as duas primeiras amostras será calculado.'}

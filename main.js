@@ -29,8 +29,8 @@ app.on('ready', function (){
     minWidth: 600,
     show: false,
     webPreferences: {
-      nodeIntegration: true,
-      preload: path.join(__dirname, 'preload.js')
+      nodeIntegration: false,
+      preload: path.join(app.getAppPath(), 'preload.js')
     },
   });
   //Load html into window
@@ -39,7 +39,6 @@ app.on('ready', function (){
     protocol: 'file:',
     slashes: true
   }));
-
   //Quit app when main window closed
   mainWindow.on('closed', () => app.quit());
   mainWindow.once('ready-to-show', () => {

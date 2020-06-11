@@ -1,7 +1,7 @@
 "use strict";
 
-exports.name = 'Start time';
-exports.func = function(data, {noise, k, t0, method}) {
+export const name = 'Start time';
+export const func = function(data, {noise, k, t0, method}) {
   if (!Array.isArray(noise)) {return null;}
   if (!k) {k = 3;}
   const useSD = method === 'Standard Deviation';
@@ -36,9 +36,9 @@ exports.func = function(data, {noise, k, t0, method}) {
   }
   return null;
 }
-exports.type = 'x-axis';
-exports.tooltip = 'A partir de um sinal de ruído,';
-exports.args = [
+export const type = 'x-axis';
+export const tooltip = 'A partir de um sinal de ruído,';
+export const args = [
   {name: 'noise', type: 'data', tooltip: 'Curva de ruído'},
   {
     name: 'k',

@@ -1,7 +1,7 @@
 "use strict";
 
-exports.pkgName = 'Linear';
-exports.pkg = [
+export const pkgName = 'Linear';
+export const pkg = [
   //FINDMAX
   {
     name: 'FindMax',

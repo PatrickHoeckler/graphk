@@ -1,7 +1,7 @@
 "use strict";
 
-exports.name = 'Filter';
-exports.func = function(data, {coefficients, n, method}) {
+export const name = 'Filter';
+export const func = function(data, {coefficients, n, method}) {
   if (!Array.isArray(coefficients)) {return null;}
   //Part 1: adjust the coefficients so that a and b are both arrays of same length
   let [b, a] = coefficients;
@@ -63,9 +63,9 @@ exports.func = function(data, {coefficients, n, method}) {
   }
   return out;
 }
-exports.tooltip = `Aplica um filtro com função de transferência dado pelos coeficientes do numerador e denominador. ` + 
+export const tooltip = `Aplica um filtro com função de transferência dado pelos coeficientes do numerador e denominador. ` + 
 'É implementado da forma direct form II transposed, similar a função filter no MATLAB';
-exports.args = [
+export const args = [
   {
     name: 'coefficients',
     type: 'data',

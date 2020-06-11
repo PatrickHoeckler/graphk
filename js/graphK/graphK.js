@@ -7,9 +7,7 @@
 const {Mode} = require('./auxiliar/mode.js')
 module.exports = {GraphK, Mode};
 
-const {
-  appendNewElement, getContextItems,
-} = require('./auxiliar/auxiliar.js');
+const {appendNewElement, getContextItems} = require('./auxiliar/auxiliar.js');
 const {Window} = require('./auxiliar/window.js');
 const {Context} = require('./auxiliar/context.js');
 const {NavTree} = require('./auxiliar/navTree.js');
@@ -67,7 +65,6 @@ function GraphK() {
   this.getTransformFromPath = panels.transform.getTransformFromPath;
   this.getDataFromPath = panels.transform.getDataFromPath;
   this.readFiles = (paths) => paths.forEach(p => panels.transform.readFile(p));
-  //  Functions to set callbacks
   this.onCallParent = function (
     executor = () => Promise.reject(new Error('callParent not set'))
   ) {

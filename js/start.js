@@ -1,5 +1,6 @@
 "use strict";
 
+
 //    COISAS PARA AJUSTAR NO FUTURO
 // - O programa precisa aceitar mais formatos: tem que ler e salvar em JSON pelo menos.
 //   Tem que salvar em JSON um conjunto de dados que não necessariamente é um array, mas
@@ -27,88 +28,96 @@
 //   uma checagem simples.
 //
 
-//Modules - all these are loaded and stored in the global object via the preload.js file
-const {path, ipcRenderer} = preloadedModules;
-const {GraphK, Mode} = require('../js/graphK/graphK.js');
 
 //REMOVER ESSA VARIÁVEL DO ESCOPO GLOBAL NO FUTURO. SÓ DEIXEI AQUI PRA FACILITAR O DEBUG
 var graphK;
 
-(function() { //Self executing function to isolate scope
+//Wraps everything in this self-executing function to protect scope
+(function() {
 
-window.onload = function() {
+//Needs to wait for the preload to load the necessary modules
+let id = setInterval(function() {
+  if (!preloadedModules) {return;}
+  clearInterval(id);
+  startProgram();
+}, 10);
+
+function startProgram() {
+  const {
+    GraphK, Mode, path,
+    loadFile, saveFile, getTransforms, onFileAdd
+  } = preloadedModules;
+  preloadedModules = null;
+
   graphK = new GraphK();
   graphK.appendTo(document.body);
-  //document.body.appendChild(graphK.node());
+  window.onresize = () => graphK.resize();
+  onFileAdd((e, fileNames) => graphK.readFiles(fileNames));
+
   graphK.onCallParent(function (message, details) {
-    if (message === 'load-file') {return ipcRenderer.invoke('load:file');}
+    if (message === 'load-file') {return loadFile();}
     if (message === 'save-file') {
-      return ipcRenderer.invoke('save:file', details.name, details.value);
+      return saveFile(details.name, details.value);
     }
-  })
-  ipcRenderer.invoke('transformations:names').then(function(tfFiles) {
-    let checkMask = false;
+    else {return Promise.reject(new Error('Invalid message to parent'));}
+  });
+  getTransforms().then(loadTransforms).then(graphK.setTransforms);
+
+
+  var keyPressed;
+  window.addEventListener('keydown', function (e) {
+    if (keyPressed) return;
+    keyPressed = true;
+    if (e.keyCode === 16) { //Shift
+      graphK.changeMode(Mode.prototype.DELETE);
+    }
+  });
+  window.addEventListener('keyup', function (e) {
+    keyPressed = false;
+    if (e.keyCode === 16) { //Shift
+      graphK.changeMode(Mode.prototype.NORMAL);
+    }
+    else if (e.keyCode === 27) { //Escape
+      //cancels selection if in middle of selecting
+      if (graphK.mode() === Mode.prototype.SELECT) {
+        graphK.stopDataSelect(true);
+      }
+    }
+  });
+
+  function loadTransforms(tfFiles) { return new Promise(resolve => {
     let transforms = {name: '.', value: []};
-    //defining a self executing function to load all
-    //transformations into the transforms object
-    (function loadTransforms(transfFolder, folderPath, mask, saveTo) {
+    (function loadDir(transfFolder, folderPath, saveTo) {
+      let importPromises = [];
       for (let i = 0; i < transfFolder.length; i++) {
         //if the element corresponds to a directory (is a object containing a value key)
         if (transfFolder[i].value !== undefined) {
-          //if the mask needs to be checked and if mask is false ignores the directory
-          if (checkMask && !mask[i][0]) continue;
           let newFolder = [];
           saveTo.push({name: transfFolder[i].name, value: newFolder, type: 'dir'});
           let nextPath = path.join(folderPath, transfFolder[i].name);
-          loadTransforms(
-            transfFolder[i].value, nextPath,
-            !checkMask ? null : mask[i].slice(1),
-            newFolder
-          );
+          //loadDir(transfFolder[i].value, nextPath, newFolder);
+          importPromises.push(loadDir(transfFolder[i].value, nextPath, newFolder));
         }
-        //if the element corresponds to a file
-        else {
-          //if the mask needs to be checked and if mask is false ignores the file
-          if (checkMask && !mask[i]) continue;
+        else { //if the element corresponds to a file
           let transformPath = '.\\' + path.join(folderPath, transfFolder[i].name);
-          let imports = require(transformPath);
-          if (Array.isArray(imports.pkg)) {
-            let pkgName = imports.pkgName ? imports.pkgName : path.parse(transformPath).name;
-            let newFolder = [];
-            saveTo.push({name: pkgName, value: newFolder, type: 'pkg'});
-            for (let tf of imports.pkg) {newFolder.push(tf);}
-          }
-          else {saveTo.push(imports);}
+          //let transformPath = path.join(folderPath, transfFolder[i].name);
+          transformPath = transformPath.replace(/\\/g, '/');
+          let impPromise = import(transformPath);
+          impPromise.then(module => {
+            if (Array.isArray(module.pkg)) {
+              let pkgName = module.pkgName ? module.pkgName : path.parse(transformPath).name;
+              let newFolder = [];
+              saveTo.push({name: pkgName, value: newFolder, type: 'pkg'});
+              for (let tf of module.pkg) {newFolder.push(tf);}
+            }
+            else {saveTo.push(module);}
+          });
+          importPromises.push(impPromise);
         }
       }
-    })(tfFiles.value, '../transformations', null, transforms.value)
-    graphK.setTransforms(transforms);
-  });
-}
+      return Promise.all(importPromises);
+    })(tfFiles.value, '../transformations', transforms.value)
+    .then(() => resolve(transforms));
+  });}
 
-window.onresize = () => graphK.resize();
-ipcRenderer.on('file:add', (e, fileNames) => graphK.readFiles(fileNames));
-
-
-var keyPressed;
-window.addEventListener('keydown', function (e) {
-  if (keyPressed) return;
-  keyPressed = true;
-  if (e.keyCode === 16) { //Shift
-    graphK.changeMode(Mode.prototype.DELETE);
-  }
-});
-window.addEventListener('keyup', function (e) {
-  keyPressed = false;
-  if (e.keyCode === 16) { //Shift
-    graphK.changeMode(Mode.prototype.NORMAL);
-  }
-  else if (e.keyCode === 27) { //Escape
-    //cancels selection if in middle of selecting
-    if (graphK.mode() === Mode.prototype.SELECT) {
-      graphK.stopDataSelect(true);
-    }
-  }
-});
-
-})(); //End of self executing function
+}})();
