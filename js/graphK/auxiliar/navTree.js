@@ -51,21 +51,22 @@ function NavTree() {
     let path = [];
     let curElem = node;
     while (curElem !== container) {
+      let found = false;
       for (let i = 0; i < curElem.children.length; i++) {
-        if (curElem.children[i].contains(container)) {
-          path.push(i);
-          //if the element child is collapsible (is a directory)
-          if (curElem.children[i].classList.contains('collapsible')) {
-            curElem = curElem.children[i].children[0].contains(container) ?
-                      curElem.children[i].children[0] : curElem.children[i].children[1];
-          }
-          //if the element child has no childs (is a leaf)
-          else {
-            curElem = curElem.children[i];
-          }
+        if (!curElem.children[i].contains(container)) {continue;}
+        found = true;
+        path.push(i);
+        //if the element child is collapsible (is a directory)
+        if (curElem.children[i].classList.contains('collapsible')) {
+          curElem = curElem.children[i].children[0].contains(container) ?
+                    curElem.children[i].children[0] : curElem.children[i].children[1];
+        }
+        //if the element child has no childs (is a leaf)
+        else {
+          curElem = curElem.children[i];
         }
       }
-      //if (!found)
+      if (!found) {return null;}
     }
     return path;
   }

@@ -6,10 +6,10 @@
 
 module.exports = {
   appendNewElement,
-  getContextItems,
   changePosition,
   selectDataInRange,
-  checkType
+  checkType,
+  defaultCallParent: () => Promise.reject(new Error('callParent not set'))
 }
 
 //This function creates an element of a given tagName and with a given class, and appends
@@ -23,45 +23,6 @@ function appendNewElement(parentElem = HTMLElement.prototype, tagName = '', clas
     catch (err) {throw new Error("Could not append to given 'parentElement'");}
   }
   return elem;
-}
-
-function getContextItems(place, detail) {
-  if (place === 'navTree') {
-    //There are six possibilities for detail:
-    //folder, folder:top, folder:empty
-    //leaf, leaf:ready, leaf:broken
-    if (
-      detail === 'folder' ||
-      detail === 'leaf:broken' ||
-      detail === 'leaf'
-    ) {return null;}
-    let [where, state] = detail.split(':');
-    return [
-      {name: 'Copy to New', return: 'copy', type: state === 'empty' ? 'inactive' : undefined},
-      {name: 'Rename', return: 'rename', type: where === 'leaf' ? 'inactive' : undefined},
-      {name: 'Save',   return: 'save', type: state === 'empty' ? 'inactive' : undefined},
-      {name: 'Remove', return: 'remove'},
-    ];
-  }
-  else if (place === 'chart') {
-    return [
-      {name: 'Select Region', return: 'select', type: detail !== 'brush' ? 'inactive' : undefined},
-      {type: 'separator'},
-      {name: 'Remove', return: 'remove'},
-      {name: 'Clear', return: 'clear'}
-    ]
-  }
-  else if (place === 'routine') {
-    return [
-      {name: 'Rename', return: 'rename', type: detail === 'panel' ? 'inactive' : undefined},
-      {name: 'New Routine', return: 'newR'},
-      {name: 'Remove Routine', return: 'remR', type: detail !== 'head' ? 'inactive' : undefined},
-      {type: 'separator'},
-      {name: 'New Step', return: 'newS', type: detail === 'panel' ? 'inactive' : undefined},
-      {name: 'Remove Step', return: 'remS', type: detail !== 'step' ? 'inactive' : undefined},
-    ]
-  }
-  else {return null;}
 }
 
 //change element position in a vector and shift other elements accordingly

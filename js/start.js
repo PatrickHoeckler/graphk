@@ -13,12 +13,6 @@
 //   dados, e também é preciso um jeito de salvá-los e carregá-los no futuro (JSON é a
 //   melhor opção que eu vejo no momento).
 //
-// - Por enquanto não existe a possibilidade de escolher quais transformações usar, ele vai
-//   mostrar tudo que está na pasta transformations. A função usada já consegue filtrar os
-//   arquivos dado uma máscara, mas não foi implementado um meio de criá-la por meio da
-//   seleção dos nomes dos arquivos.
-// - Analisar a possibilidade de trocar todos ou alguns callbacks para Promises, deixando o
-//   código mais simples.
 // - Adicionar um jeito melhor de checar por erros, principalmente typeError. É difícil por
 //   enquanto checar por vários tipos de uma só vez e dar throw quando encontra algum erro.
 //   A função no arquivo 'graphK.js' chamada graphK.checkType() é uma opção que eu pensei
@@ -28,8 +22,7 @@
 //   uma checagem simples.
 //
 
-
-//REMOVER ESSA VARIÁVEL DO ESCOPO GLOBAL NO FUTURO. SÓ DEIXEI AQUI PRA FACILITAR O DEBUG
+//FIXME: this variable is only in the global scope for debug purposes. Remove on release
 var graphK;
 
 //Wraps everything in this self-executing function to protect scope
@@ -45,7 +38,7 @@ let id = setInterval(function() {
 function startProgram() {
   const {
     GraphK, Mode, path,
-    loadFile, saveFile, getTransforms, onFileAdd
+    loadFile, saveFile, getTransformsFiles, onFileAdd, captureImage
   } = preloadedModules;
   preloadedModules = null;
 
@@ -56,12 +49,14 @@ function startProgram() {
 
   graphK.onCallParent(function (message, details) {
     if (message === 'load-file') {return loadFile();}
-    if (message === 'save-file') {
-      return saveFile(details.name, details.value);
+    if (message === 'save-file') {return saveFile(details.data);}
+    if (message === 'capture') {
+      captureImage(details.target.getBoundingClientRect());
+      return Promise.resolve(null);
     }
-    else {return Promise.reject(new Error('Invalid message to parent'));}
+    return Promise.reject(new Error('Invalid message to parent'));
   });
-  getTransforms().then(loadTransforms).then(graphK.setTransforms);
+  getTransformsFiles().then(loadTransforms).then(graphK.setTransforms);
 
 
   var keyPressed;
@@ -100,7 +95,6 @@ function startProgram() {
         }
         else { //if the element corresponds to a file
           let transformPath = '.\\' + path.join(folderPath, transfFolder[i].name);
-          //let transformPath = path.join(folderPath, transfFolder[i].name);
           transformPath = transformPath.replace(/\\/g, '/');
           let impPromise = import(transformPath);
           impPromise.then(module => {

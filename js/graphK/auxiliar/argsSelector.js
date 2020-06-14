@@ -6,17 +6,15 @@
 
 module.exports = {ArgsSelector};
 
-const {appendNewElement} = require('./auxiliar.js');
+const {appendNewElement, defaultCallParent} = require('./auxiliar.js');
 const {Window} = require('./window.js');
 function ArgsSelector(argsFormat, parent, title = 'Select Arguments') {
   //Private Properties
   var argWindow, argsBox, bWrapper;
-  var callParent;
+  var callParent = defaultCallParent;
 
   //Public Methods
-  this.onCallParent = function (
-    executor = () => Promise.reject(new Error('callParent not set'))
-  ) {
+  this.onCallParent = function (executor = defaultCallParent) {
     if (typeof(executor) !== 'function') { throw new TypeError(
       `Expected a function for the 'executor' argument. Got type ${typeof(executor)}`
     );}

@@ -2,7 +2,9 @@
 
 module.exports = {PanelHolder};
 const {Panel} = require('./panel.js');
-const {appendNewElement, changePosition} = require('../auxiliar/auxiliar.js');
+const {
+  appendNewElement, changePosition, defaultCallParent
+} = require('../auxiliar/auxiliar.js');
 
 //The arguments must be instances of a Panel object to be all contained
 //by the PanelHolder
@@ -17,12 +19,10 @@ function PanelHolder(...panels) {
   var height; //height of the PanelHolder including the margins
   var timeoutId;
   var collapsed;
-  var callParent = () => Promise.reject(new Error('callParent not set'));
+  var callParent = defaultCallParent;
   //Public Attributes
   //Public Methods
-  this.onCallParent = function (
-    executor = () => Promise.reject(new Error('callParent not set'))
-  ) {
+  this.onCallParent = function (executor = defaultCallParent) {
     if (typeof(executor) !== 'function') { throw new TypeError(
       `Expected a function for the 'executor' argument. Got type ${typeof(executor)}`
     );}

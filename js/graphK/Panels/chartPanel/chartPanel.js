@@ -6,6 +6,7 @@
 
 module.exports = {ChartPanel};
 
+const {defaultCallParent} = require('../../auxiliar/auxiliar.js');
 const {Panel} = require('../../PanelManager/panel.js');
 const {Chart} = require('./chart.js');
 const strokeColor = [
@@ -35,41 +36,22 @@ function ChartPanel(modeObj) {
   var toolbar, pContents;
   var toolbarLevel;
   var nextColor = 0;
-  var contextCallback;
   var mouseOverElem;
+  var callParent = defaultCallParent;
 
   //Public Methods
+  this.onCallParent = function (executor = defaultCallParent) {
+    if (typeof(executor) !== 'function') { throw new TypeError(
+      `Expected a function for the 'executor' argument. Got type ${typeof(executor)}`
+    );}
+    callParent = executor;
+  }
   this.chartCount = () => charts.length;
-  this.onContext = (callback) => contextCallback = callback;
   this.setBrush = (enable) => charts.forEach(c => c.setBrush(enable));
   this.addChart = addChart;
   this.clearChart = clearChart;
   this.removeChart = removeChart;
   this.resize = () => charts.forEach(c => c.reScale());
-  this.getDataFromBrush = (brush) => {
-    //finds the chart which contains the brush targeted
-    let targetChart = null;
-    for (let i = 0; i < charts.length; i++) {
-      if (charts[i].node().contains(brush)) {
-        targetChart = charts[i];
-        break;
-      }
-    }
-    if (!targetChart) {return null;}
-    
-    //clears all brushes except the targeted one
-    charts.forEach(c => {if (c !== targetChart) {c.clearBrush(false)}});
-    //gets targeted brush data, sends a warning if data returned is incomplete
-    let brushData = targetChart.getDataFromBrush();
-    if (brushData && brushData.length > 1) {return brushData;}
-    if (brushData === null) {
-      targetChart.brushAlert('Só é possível fazer a seleçao quando existe apenas uma curva plotada');
-    }
-    else if (brushData.length === 1) {
-      targetChart.brushAlert('Seleção não capturou pelo menos 2 pontos');
-    }
-    return null;
-  }
 
   //Private Functions
   function addChart(height = 250) {
@@ -117,6 +99,30 @@ function ChartPanel(modeObj) {
       if (!curElem || curElem === pContents) {return null;}
       if (curElem.classList.contains('chart-body')) {return curElem;}
     }
+  }
+  function getDataFromBrush (brush) {
+    //finds the chart which contains the brush targeted
+    let targetChart = null;
+    for (let i = 0; i < charts.length; i++) {
+      if (charts[i].node().contains(brush)) {
+        targetChart = charts[i];
+        break;
+      }
+    }
+    if (!targetChart) {return null;}
+    
+    //clears all brushes except the targeted one
+    charts.forEach(c => {if (c !== targetChart) {c.clearBrush(false)}});
+    //gets targeted brush data, sends a warning if data returned is incomplete
+    let brushData = targetChart.getDataFromBrush();
+    if (brushData && brushData.length > 1) {return brushData;}
+    if (brushData === null) {
+      targetChart.brushAlert('Só é possível fazer a seleçao quando existe apenas uma curva plotada');
+    }
+    else if (brushData.length === 1) {
+      targetChart.brushAlert('Seleção não capturou pelo menos 2 pontos');
+    }
+    return null;
   }
   function executeToolbarAction(buttonId, targetElems) { return function execute() 
   {
@@ -180,7 +186,7 @@ function ChartPanel(modeObj) {
   //Initialize object
   (function() {
     //Inheriting from Panel Object
-    Panel.call(this, 'GRÁFICOS', [
+    Panel.call(this, 'Gráficos', [
       {className: 'icon-plus', tooltip: 'New Chart'},
       {className: 'icon-square-corners', tooltip: 'Select Region'},
       {className: 'icon-diameter', tooltip: 'Clear Chart'},
@@ -231,10 +237,30 @@ function ChartPanel(modeObj) {
       if (!mode.is(mode.DELETE)) {return;}
       removeChart(e.target); //removes chart that contains the target of the event
     });
-    pContents.addEventListener('contextmenu', (e) => {
-      if (!contextCallback || e.target === pContents) {return};
-      let detail = e.target.classList.contains('selection') ? 'brush' : undefined;
-      contextCallback(e, 'chart', detail);
+    pContents.addEventListener('contextmenu', ({target, x, y}) => {
+      if (target === pContents) {return};
+      let isBrush = target.classList.contains('selection');
+      callParent('context', {x, y, contextItems: [
+        {name: 'Select Region', return: 'select',
+         type: isBrush ? undefined : 'inactive'},
+        {name: 'Save Image', return: 'capture'},
+        {type: 'separator'},
+        {name: 'Remove', return: 'remove'},
+        {name: 'Clear', return: 'clear'}
+      ]}).then((item) => {
+        if (!item) {return;}
+        if (item === 'select') {
+          let value = getDataFromBrush(target);
+          if (value) {callParent('add-data', {data: {
+            name: 'Selection', value
+          }});}
+        }
+        else if (item === 'capture') {
+          target = getContainingChart(target).children[0];
+          callParent(item, {target});}
+        else if (item === 'remove') {removeChart(target);}
+        else if (item === 'clear') {clearChart(target);}
+      });
     });
 
     //Adding toolbar handler

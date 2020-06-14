@@ -1,13 +1,8 @@
 "use strict";
 
-//    COISAS PARA AJUSTAR NO FUTURO
-//
-//
-
 const {Mode} = require('./auxiliar/mode.js')
 module.exports = {GraphK, Mode};
-
-const {appendNewElement, getContextItems} = require('./auxiliar/auxiliar.js');
+const {appendNewElement, defaultCallParent} = require('./auxiliar/auxiliar.js');
 const {Window} = require('./auxiliar/window.js');
 const {Context} = require('./auxiliar/context.js');
 const {NavTree} = require('./auxiliar/navTree.js');
@@ -42,7 +37,8 @@ function GraphK() {
   //Public Attributes
 
   //Private Properties
-  var callParent = () => Promise.reject(new Error('callParent not set'));
+  var callParent = defaultCallParent;
+  var mouseOverElem = null;
 
   //Public Methods
   this.node = () => node;
@@ -64,10 +60,8 @@ function GraphK() {
   };
   this.getTransformFromPath = panels.transform.getTransformFromPath;
   this.getDataFromPath = panels.transform.getDataFromPath;
-  this.readFiles = (paths) => paths.forEach(p => panels.transform.readFile(p));
-  this.onCallParent = function (
-    executor = () => Promise.reject(new Error('callParent not set'))
-  ) {
+  this.readFiles = panels.transform.readFiles;
+  this.onCallParent = function (executor = defaultCallParent) {
     if (typeof(executor) !== 'function') { throw new TypeError(
       `Expected a function for the 'executor' argument. Got type ${typeof(executor)}`
     );}
@@ -93,49 +87,13 @@ function GraphK() {
       }
     }
   }
-  function createContextMenu(event, place, detail) {
-    let items = getContextItems(place, detail);
-    if (!items) {return;}
-    let context = new Context(event.pageX, event.pageY, items, function(action) {
+  function contextMenu({x, y, contextItems}) {return new Promise((resolve) => {
+    let context = new Context(x, y, contextItems, function(action) {
       context.destroy();
-      executeContextAction(place, action, event.target);
+      resolve(action);
     });
     context.appendTo(node);
-  }
-  function executeContextAction(place, action, target) {
-    if (!action) {return;}
-    if (place === 'chart') {
-      if (action === 'select') {
-        let data = panels.chart.getDataFromBrush(target);
-        if (!data) {return;}
-        //third argument indicates that the rename box will be opened the
-        //moment the file is created
-        panels.transform.addToTree('selection', data, true);
-      }
-      else if (action === 'remove') {panels.chart.removeChart(target);}
-      else if (action === 'clear') {panels.chart.clearChart(target);}
-    }
-    else if (place === 'navTree') {
-      if (action === 'copy') {
-        let {name, value} = panels.transform.getDataFromTreeElement(target);
-        panels.transform.addToTree(name, value, true);
-      }
-      else if (action === 'rename') {panels.transform.renameFile(target);}
-      else if (action === 'remove') {panels.transform.deleteFromTree(target);}
-      else if (action === 'save') {
-        let {name, value} = panels.transform.getDataFromTreeElement(target);
-        if (!value) {return;}
-        callParent('save-file', {name, value});
-      }
-    }
-    else if (place === 'routine') {
-      if (action === 'newR') panels.routine.newRoutine('routine', true);
-      else if (action === 'remR') panels.routine.removeInRoutine(target);
-      else if (action === 'rename') panels.routine.renameRoutine(target);
-      else if (action === 'newS') panels.routine.addToRoutine(target, 'step', true);
-      else if (action === 'remS') panels.routine.removeInRoutine(target);
-    }
-  }
+  });}
   function configureTransforms() {return new Promise((resolve) => {
     const subWindow = new Window({
       width: 250, height: 400,
@@ -154,13 +112,15 @@ function GraphK() {
     });
   });}
   function respondChild(message, details = {}) {
-    if (message === 'load-file') {return callParent('load-file');}
-    if (message === 'save-file') {return callParent('save-file', details);}
+    if (message === 'context'  ) {return contextMenu(details);}
+    if (message === 'load-file') {return callParent(message);}
+    if (message === 'save-file') {return callParent(message, details);}
+    if (message === 'capture'  ) {return callParent(message, details);}
     if (message === 'configure-transforms') {return configureTransforms();}
     if (message === 'transform') {return selectTransform(details.x, details.y);}
     if (message === 'get-data') {return panels.transform.startDataSelect();}
     if (message === 'add-data') {
-      panels.transform.addToTree('Routine', details.data, true);
+      panels.transform.addToTree(details.data, true);
       return Promise.resolve(null);
     }
     if (message === 'select-range') {
@@ -169,21 +129,24 @@ function GraphK() {
     if (message === 'arguments') {
       return getArguments(details.argsFormat, details.windowTitle);
     }
-    else {return Promise.reject(new Error('Invalid message to parent'));}
+    return Promise.reject(new Error('Invalid message to parent'));
   }
   function selectTransform(x, y) { return new Promise((resolve) => {
+    mode.lock();
     const tfWindow = new Window({
       width: 250, height: 400, x: x, y: y,
       parent: node, content: navTree.node().parentElement,
       frame: true, title: 'Select transform', frameButtons: ['close']
     });
     function selected(event) {
+      mode.unlock();
       let elem = navTree.getContainingElement(event.target);
       if (!elem || !elem.classList.contains('leaf')) {return;}
       elem.classList.remove('highlight');
       tfWindow.hide();
+      let path = navTree.findPath(elem);
       //Selecting transform arguments if any
-      let transform = panels.transform.getDataFromTreeElement(elem);
+      let transform = panels.transform.getTransformFromPath(path);
       getArguments(transform.args).then(({args, canceled}) => {
         if (canceled) {tfWindow.show(); return;}
         tfWindow.close();
@@ -197,11 +160,11 @@ function GraphK() {
       if (state !== 'click') {return;}
       navTree.node().removeEventListener('dblclick', selected);
       resolve({canceled: true});
+      mode.unlock();
     });
   });}
   function getArguments(argsFormat, title = 'Select Parameters') {
   return new Promise((resolve) => {
-    //if no arguments needed, just calls the callback to calculate transform
     if (!argsFormat) {return resolve({args: null});}
     const argsSelector = new ArgsSelector(argsFormat, node, title);
     argsSelector.onCallParent(function (message, details) {
@@ -249,20 +212,19 @@ function GraphK() {
       panels.chart
     );
     
-    panels.transform.onContext(createContextMenu);
-    panels.routine.onContext(createContextMenu);
-    panels.chart.onContext(createContextMenu);
+    panels.chart.onCallParent(respondChild);
     panels.transform.onCallParent(respondChild);
     panels.routine.onCallParent(respondChild);
 
     //Adding Event Listeners
-    navTree.node().addEventListener('mouseover', function (e) {
-      mouseOverElem = navTree.getContainingElement(e.target);
-      if (mouseOverElem) {mouseOverElem.style.backgroundColor = 'rgb(70,70,70)';}
+    navTree.node().addEventListener('mouseover', function ({target}) {
+      if (mouseOverElem) {mouseOverElem.classList.remove('highlight');}
+      mouseOverElem = navTree.getContainingElement(target);
+      if (mouseOverElem) {mouseOverElem.classList.add('highlight');}
     });
     navTree.node().addEventListener('mouseout', function (e) {
-      mouseOverElem = navTree.getContainingElement(e.target);
-      if (mouseOverElem) {mouseOverElem.style.backgroundColor = '';}
+      if (mouseOverElem) {mouseOverElem.classList.remove('highlight');}
+      mouseOverElem = null;
     });
     navTree.node().addEventListener('click', (e) => navTree.toggleFolder(e.target));
   })();

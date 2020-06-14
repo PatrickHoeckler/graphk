@@ -6,7 +6,9 @@
 
 module.exports = {RoutinePanel};
 
-const {appendNewElement, selectDataInRange} = require('../../auxiliar/auxiliar.js');
+const {
+  appendNewElement, selectDataInRange, defaultCallParent
+} = require('../../auxiliar/auxiliar.js');
 const {Context} = require('../../auxiliar/context.js');
 const {Panel} = require('../../PanelManager/panel.js');
 
@@ -22,22 +24,18 @@ function RoutinePanel(modeObj) {
   //Public Attributes
   //Private Properties
   var pContents, toolbar;
-  var contextCallback;
-  var callParent = () => Promise.reject(new Error('callParent not set'));
+  var callParent = defaultCallParent;
 
   //Public Methods
   this.newRoutine = newRoutine;
   this.addToRoutine = addToRoutine;
   this.removeInRoutine = removeInRoutine;
   this.renameRoutine = renameRoutine;
-  this.onContext  = (callback) => contextCallback = callback;
-  this.onCallParent = function (
-    executor = () => Promise.reject(new Error('callParent not set'))
-  ) {
+  this.onCallParent = function (executor = defaultCallParent) {
     if (typeof(executor) !== 'function') { throw new TypeError(
       `Expected a function for the 'executor' argument. Got type ${typeof(executor)}`
     );}
-  callParent = executor;
+    callParent = executor;
   }
 
   //Private Functions
@@ -59,6 +57,7 @@ function RoutinePanel(modeObj) {
     let routine = routines[id];
     if (!routine) {return false;}
     routine.push(null); //push empty step to routine
+    if (!name) {name = 'Step ' + routine.length;}
     pContents.children[id].classList.remove('collapsed');
     let rContents = pContents.children[id].children[1];
     let rStep = appendNewElement(rContents, 'div', 'routine-step empty');
@@ -121,52 +120,50 @@ function RoutinePanel(modeObj) {
     //calls parent to get data via mouse selection
     callParent('get-data').then(({data, canceled}) => {
       if (canceled) {return;}
-      data = data.value;
+      let value = data.value;
+      let type = data.type;
+      if (type !== 'normal') {throw TypeError(
+        `Expected a set of data of type 'normal'`
+      );}
       for (let step of routine) {
         if (!step) {continue;}
-        if (step.func) {data = step.func(data, step.args);}
-        else if (step.range) {data = selectDataInRange(data, step.range);}
+        if (step.func) {value = step.func(value, step.args);}
+        else if (step.range) {value = selectDataInRange(value, step.range);}
       }
       //calls parent to add new data to tree
-      return callParent('add-data', {data: data, name: target.innerText});
+      return callParent('add-data', {data: {
+        name: target.innerText, value, type
+      }});
     });
   }
   function createStepAction(rStep) {
-    //opening a context box to let the user choose an option
-    let items = [
+    let {x, y, right} = rStep.children[2].getBoundingClientRect();
+    callParent('context', {x, y, contextItems: [
       {name: 'Trasformation', return: 'transform'},
       {name: 'Range', type: 'submenu', submenu: [
         {name: 'Select from chart', return: 'select-range'},
         {name: 'Input limits', return: 'input-range'}
       ]},
       {name: 'Clear Step', return: 'clear'}
-    ]
-    let {x, y, right} = rStep.children[2].getBoundingClientRect();
-    let context = new Context(x, y, items, function(option) {
-      context.destroy();
+    ]})
+    .then((item) => { 
+      if (!item) {return;}
       let id = findRoutineId(rStep);
       let stepId = Array.prototype.indexOf.call(rStep.parentElement.children, rStep);
-      if (option === 'clear') {
-        routines[id][stepId] = null;
-        rStep.classList.add('empty');
-      }
-      function setStep(action, canceled) {
-        if (canceled) {return;}
-        routines[id][stepId] = action;
-        rStep.classList.remove('empty');
-      }
-      if (option === 'transform') {
-        callParent(option, {x: right}).then(({func, args, canceled}) => {
-          setStep({func: func, args: args}, canceled);
+      if (item === 'transform') {
+        callParent('transform', {x: right}).then(({func, args, canceled}) => {
+          if (canceled) {return;}
+          routines[id][stepId] = {func: func, args: args};
+          rStep.classList.remove('empty');
         });
       }
-      else if (option === 'select-range') {
-        callParent(option)
-      }
-      else if (option === 'input-range') {
+      else if (item === 'select-range') {callParent(item);}
+      else if (item === 'input-range') {
         callParent('arguments', {argsFormat: [
-          {name: 'lower',  type: 'number', optional: true, tooltip: 'Limite inferior para o eixo x'},
-          {name: 'higher', type: 'number', optional: true, tooltip: 'Limite superior para o eixo x'},
+          {name: 'lower',  type: 'number', optional: true,
+           tooltip: 'Limite inferior para o eixo x'},
+          {name: 'higher', type: 'number', optional: true,
+           tooltip: 'Limite superior para o eixo x'},
         ], windowTitle: 'Input x-axis selection range'})
         .then(({args, canceled}) => {
           if (canceled) {return;}
@@ -177,8 +174,11 @@ function RoutinePanel(modeObj) {
           rStep.classList.remove('empty');
         });
       }
+      else if (item === 'clear') {
+        routines[id][stepId] = null;
+        rStep.classList.add('empty');
+      }
     });
-    context.appendTo(document.body);
   }
   function removeInRoutine(target) {
     let elem = getContainingElement(target);
@@ -208,7 +208,7 @@ function RoutinePanel(modeObj) {
     else if (buttonId === 1) {
       let openRenameBox = targetElems.length === 1;
       for (let target of targetElems) {
-        addToRoutine(target, 'Step', openRenameBox);
+        addToRoutine(target, null, openRenameBox);
       }
     }
     else if (buttonId === 2) { //If clicked on remove
@@ -260,7 +260,7 @@ function RoutinePanel(modeObj) {
   //Initialize object
   (function (){
     //Inheriting from Panel Object
-    Panel.call(this, 'ROTINAS', [
+    Panel.call(this, 'Rotinas', [
       {className: 'icon-plus', tooltip: 'New Routine'},
       {className: 'icon-step', tooltip: 'New Step'},
       {className: 'icon-x'   , tooltip: 'Remove'},
@@ -297,14 +297,30 @@ function RoutinePanel(modeObj) {
       if (!mode.is(mode.DELETE)) {return;}
       removeInRoutine(e.target);
     });
-    pContents.addEventListener('contextmenu', (e) => {
-      if (!contextCallback) {return};
+    pContents.addEventListener('contextmenu', ({x, y, target}) => {
       let detail;
-      let elem = getContainingElement(e.target);
+      let elem = getContainingElement(target);
       if (!elem) {detail = 'panel';}
       else if (elem.classList.contains('routine-head')) {detail = 'head';}
       else {detail = 'step';}
-      contextCallback(e, 'routine', detail);
+      callParent('context', {x, y, contextItems: [
+        {name: 'Rename', return: 'rename',
+         type: detail === 'panel' ? 'inactive' : undefined},
+        {name: 'New Routine', return: 'newR'},
+        {name: 'Remove Routine', return: 'remove',
+         type: detail !== 'head' ? 'inactive' : undefined},
+        {type: 'separator'},
+        {name: 'New Step', return: 'newS',
+         type: detail === 'panel' ? 'inactive' : undefined},
+        {name: 'Remove Step', return: 'remove',
+         type: detail !== 'step' ? 'inactive' : undefined},
+      ]}).then((item) => {
+        if (!item) {return;}
+        if (item === 'rename') {renameRoutine(target);}
+        else if (item === 'newR') {newRoutine('Routine', true);}
+        else if (item === 'newS') {addToRoutine(target, null, true);}
+        else if (item === 'remove') {removeInRoutine(target);}
+      });
     });
 
     //Adding toolbar handler

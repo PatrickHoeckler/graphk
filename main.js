@@ -30,7 +30,7 @@ app.on('ready', function (){
     show: false,
     webPreferences: {
       nodeIntegration: false,
-      preload: path.join(app.getAppPath(), 'preload.js')
+      preload: path.join(app.getAppPath(), './js/preload.js')
     },
   });
   //Load html into window
@@ -137,44 +137,65 @@ ipcMain.handle('transformations:names', (event) => {
   return tfFiles;
 });
 
-ipcMain.handle('save:file', (event, name, value) => {
-  //show dialog box to save file
+ipcMain.handle('capture:image', (event, rect) => {
   let fileName = dialog.showSaveDialogSync(mainWindow, {
-    defaultPath: name,
+    defaultPath: 'capture',
     filters: [
-      {name: 'Comma separeted values (.csv)', extensions: ['csv']}
-    ],
+      {name: 'Portable Network Graphics (*.png)', extensions: ['png']}
+    ]
   });
   if (fileName === undefined) {return false};
 
-  //open file selected to save data
   fs.open(fileName, 'w', (err, file) => {
     if (err) {
-      dialog.showErrorBox('Erro abrindo arquivo', err.prototype.message);
-      return;
+      return dialog.showErrorBox('Erro abrindo arquivo', err.prototype.message);
     }
+    mainWindow.webContents.capturePage(rect).then((capture) => {
+      let pngBuffer = capture.toPNG();
+      fs.write(file, pngBuffer, (err) => {
+        fs.close(file, () => {return;});
+        if (!err) {return;}
+        dialog.showErrorBox('Erro escrevendo no arquivo', err.prototype.message);
+      });
+    });
+  });
+});
 
-    //convert data to csv
-    function dataToCSV(data) {
-      let csv = '';
-      data.forEach((sample) => csv += sample.join(',') + '\n');
-      return csv;
+ipcMain.handle('save:file', (event, data) => {
+  let fileName = dialog.showSaveDialogSync(mainWindow, {
+    defaultPath: data.name,
+    filters: [
+      {name: 'Javascript Object Notation (.json)', extensions: ['json']},
+      {name: 'Comma separeted values (.csv)', extensions: ['csv']},
+    ]
+  });
+  if (fileName === undefined) {return false};
+  fs.open(fileName, 'w', (err, file) => {
+    if (err) {
+      return dialog.showErrorBox('Erro abrindo arquivo', err.prototype.message);
     }
-    let csv = dataToCSV(value);
-
+    let extension = path.extname(fileName);
+    let contents = '';
+    if (extension === '.csv') {
+      data.value.forEach((sample) => contents += sample.join(',') + '\n');
+    }
+    else if (extension === '.json') {
+      contents = JSON.stringify(data);
+    }
+    else {return null;}
     //save data
-    fs.write(file, csv, (err) => {
+    fs.write(file, contents, (err) => {
       fs.close(file, () => {return;});
       if (!err) return;
       dialog.showErrorBox('Erro escrevendo no arquivo', err.prototype.message);
     });
   });
-  return true;
 });
 
 ipcMain.handle('load:file', () => dialog.showOpenDialog(mainWindow, {
   properties: ['openFile', 'multiSelections'],
   filters: [
+    { name: 'Javascript Object Notation (.json)', extensions: ['json'] },
     { name: 'Comma separeted values (.csv)', extensions: ['csv'] },
     { name: 'All Files (*.*)', extensions: ['*'] }
   ]
