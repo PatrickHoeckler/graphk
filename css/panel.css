@@ -1,8 +1,6 @@
 /*Multiple Panel Containers CSS*/
 .panel-region {
   background-color: var(--main-bg-color);
-  font-family: var(--font-family);
-  color: var(--font-color);
   display: flex; flex-direction: row;
   height: 100%; width: 100%;
   padding: 1px 2px;
@@ -161,4 +159,87 @@
 /*************CHART PANEL****************/
 .chart-panel {
   padding: 4px;
+}
+
+/**********PROPERTIES PANEL*************/
+.properties-panel {
+  display: flex; flex-direction: column;
+  font-size: small;
+  padding: 2px 6px;
+}
+.properties-panel > .property-object > .property-header {
+  display: flex;
+  white-space: nowrap;
+  align-items: center;
+  overflow: hidden;
+  color: var(--property-header-color);
+  border-color: var(--property-header-color);
+}
+.properties-panel > .property-object > .property-header::after,
+.properties-panel > .property-object > .property-header::before {
+  content: '';
+  flex-grow: 1;
+  border-bottom: 1px solid;
+  border-color: inherit;
+}
+.properties-panel > .property-object > .property-header::before {margin-right: 4px;}
+.properties-panel > .property-object > .property-header::after {margin-left: 4px;}
+.properties-panel .property-container {
+  display: flex;
+  height: 22px;
+  margin: 4px;
+}
+.properties-panel .property-name {
+  display: block;
+  min-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.properties-panel .property-value {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: inherit;
+  font-family: inherit;
+  flex-grow: 1;
+  width: 0;
+  background-color: var(--panel-color);
+  border: 1px inset rgb(65, 65, 74);
+  transition: border-color 300ms;
+}
+.properties-panel .property-value:disabled {opacity: 0.6;}
+.properties-panel .property-value:focus {
+  border-color: darkgoldenrod;
+  outline: none;
+}
+.properties-panel .property-value.warning{border-color: crimson}
+.properties-panel input.property-value {padding: 0px 4px;}
+.properties-panel input[type='number'].property-value::-webkit-outer-spin-button,
+.properties-panel input[type='number'].property-value::-webkit-inner-spin-button {
+  background-color: transparent;
+  -webkit-appearance: none;
+}
+.properties-panel input[type='range'].property-value {
+  align-self: center;
+  margin: 0px;
+  -webkit-appearance: none;
+  height: 12px;
+  transition: background-color 200ms;
+  background-color: transparent;
+  outline: none;
+  overflow: visible;
+}
+.properties-panel input[type='range'].property-value:hover {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+.properties-panel input[type='range'].property-value::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px; height: 12px;
+  background-color: rgb(76, 119, 211);
+}
+.properties-panel select.property-value > option {
+  background-color: inherit;
 }

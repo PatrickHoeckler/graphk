@@ -1,0 +1,29 @@
+.color-picker {
+  background-color: var(--color-picker-color);
+  border-color: var(--color-picker-border-color);
+  border-width: 1px; border-style: solid;
+  display: flex; flex-direction: row;
+  box-sizing: border-box;
+  font-size: small;
+  padding: 6px;
+  padding-top: 0px;
+}
+.color-picker canvas {margin-top: 6px;}
+.color-picker > .selector-container {
+  display: flex; flex-direction: column;
+}
+.color-picker > .display-container {
+  display: flex; flex-direction: column;
+  padding-top: 6px;
+  margin-left: 6px;
+  width: 60px;
+}
+.color-picker > .display-container > .display-color {
+  border-color: var(--color-picker-border-color);
+  border-width: 2px; border-style: groove;
+  box-sizing: border-box;
+}
+.color-picker > .display-container > .display-value {
+  margin-top: 6px;
+  text-align: center;
+}

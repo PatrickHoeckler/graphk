@@ -29,9 +29,7 @@ function Window(options = {}) {
   this.close = () => close('func');
   this.resize = function (width = 0, height = 0) {
     let error = checkType('number', {width: width, height: height});
-    if (error) {throw new TypeError(
-      `Expected type 'number' from option ${error.key}, got ${error.type}`
-    );}
+    if (error) {throw new TypeError(error);}
     wWidth  = width  > 0 ? width  : 0;
     wHeight = height > 0 ? height : 0;
     wContainer.style.width  = wWidth  ? `${wWidth}px`  : '';
@@ -54,11 +52,9 @@ function Window(options = {}) {
       frame = false, title, frameButtons = ['close'], //frame options
       parent, content //parent and content elements
     } = options;
-
-    let error = checkType('number', {width: width, height: height});
-    if (error) {throw new TypeError(
-      `Expected type 'number' from option ${error.key}, got ${error.type}`
-    );}
+    
+    let error = checkType('number', {width, height});
+    if (error) {throw new TypeError(error);}
     destroy();
     //Create window elements
     wNode = appendNewElement(null, 'div', 'window');
@@ -100,24 +96,21 @@ function Window(options = {}) {
   //Private Functions
   //  Position window container so its top left corner is on the given
   //  x and y coordinates. Will adjust the x and y so as to not overflow
-  //  the window from the parent element
+  //  the document body
   function positionWindow(x, y) {
     let [width, height] = getSize();
-    let parent = wNode.parentElement;
-    //don't change anything until appended to a elem
-    if (!parent) {return;}
-    let parHeight = parent.clientHeight;
-    let parWidth = parent.clientWidth;
+    let docHeight = document.body.clientHeight;
+    let docWidth = document.body.clientWidth;
     if (y !== null) {
       if (y < 0) {y = 0;}
-      else if (parHeight < y + height) {y = parHeight - height;}
+      else if (docHeight < y + height) {y = docHeight - height;}
     }
-    else {y = (parHeight - height) / 2;}
+    else {y = (docHeight - height) / 2;}
     if (x !== null) {
       if (x < 0) {x = 0;}
-      else if (parWidth  < x + width) {x = parWidth - width;}
+      else if (docWidth  < x + width) {x = docWidth - width;}
     }
-    else {x = (parWidth - width) / 2;}
+    else {x = (docWidth - width) / 2;}
     wContainer.style.top  = `${wTop  = y}px`;
     wContainer.style.left = `${wLeft = x}px`;
   }
@@ -152,8 +145,8 @@ function Window(options = {}) {
     let width = wWidth;
     let height = wHeight;
     if (!width || !height) {
-      let {bWidth, bHeight} = wContainer.getBoundingClientRect();
-      width = bWidth; height = bHeight;
+      let bRect = wContainer.getBoundingClientRect();
+      width = bRect.width; height = bRect.height;
     }
     else {
       width = Number(wContainer.style.width.slice (0, -2));

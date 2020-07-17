@@ -181,6 +181,14 @@ function TransformPanel(modeObj) {
       warningBox.remove(); renameBox.remove();
       renameBox.removeEventListener('keydown', checkStopKeys);
       renameBox.removeEventListener('input', checkInput);
+      if (selectedElems.length === 1 && selectedElems[0] === elem) {
+        callParent('properties', {pObjs: [
+          {
+            name: elem.innerText, props: getElemProperties(elem),
+            onChange: propertyChanged
+          }
+        ]})
+      }
     }
     //Configuring rename box functionality
     renameBox.addEventListener('focusout', setName, {once: true});
@@ -208,9 +216,51 @@ function TransformPanel(modeObj) {
     fileManager.deleteDataInPath(path);
     
     let id = selectedElems.indexOf(treeElem);
-    if (id !== -1) {selectedElems.splice(id, 1);}
-    if (selectedElems.length === 0) {updateToolbarButtons(0);}
+    if (id !== -1) {
+      selectedElems.splice(id, 1);
+      sendPropertiesOfSelected();
+      if (selectedElems.length === 0) {updateToolbarButtons(0);}
+    }
     return true;
+  }
+  function getElemProperties(treeElem) {
+    const path = navTree.findPath(treeElem);
+    let data = fileManager.getDataFromPath(path);
+    if (data.type === 'dir') {return [];}
+    const typeProp = path.length !== 1 || data.type === 'no-plot' ? {
+      name: 'Type', value: data.type, type: 'text', disabled: true
+    } : {
+      name: 'Type', value: data.type, type: 'select',
+      option: ['normal', 'scatter']
+    }
+    return [
+      {name: 'Name', value: data.name, disabled: path.length !== 1}, typeProp
+    ]
+  }
+  function propertyChanged({name, value}) {
+    let data = fileManager.getDataFromPath(navTree.findPath(selectedElems[0]));
+    if (name === 'Name') {
+      let textElem = selectedElems[0].getElementsByClassName('node-name')[0];
+      if (value === textElem.innerText) {return;}
+      if (!filenameFormat.test(value)) {return {replace: data.name};}
+      textElem.innerHTML = data.name = value;
+      return {rename: value};
+    }
+    else if (name === 'Type') {data.type = value;}
+  }
+  function sendPropertiesOfSelected() {
+    if (selectedElems.length > 1) {
+      callParent('properties', {pObjs: [{name: 'Multiple Files'}]});
+    }
+    else if (selectedElems.length === 1) {
+      callParent('properties', {pObjs: [{
+        name: selectedElems[0].innerText, onChange: propertyChanged,
+        props: getElemProperties(selectedElems[0])
+      }]});
+    }
+    else {
+      callParent('properties', {pObjs: []});
+    }
   }
   //Listener to be executed when the mode is about to change
   function modeChange(newMode) {
@@ -270,12 +320,14 @@ function TransformPanel(modeObj) {
       if (toolbarLevel !== 2 && !elem.classList.contains('empty')) {
         updateToolbarButtons(2);
       }
+      sendPropertiesOfSelected();
     }
     else {
       if (!elem) {return clearSelection();}
       if (!navTree.isTopFolder(elem) && !elem.classList.contains('ready')) {
         return clearSelection();
       }
+      const updateProperties = selectedElems.length > 1 || selectedElems[0] !== elem;
       while (selectedElems.length > 1) {
         selectedElems.pop().classList.remove('selected');
       }
@@ -285,11 +337,14 @@ function TransformPanel(modeObj) {
         elem.classList.add('selected');
         selectedElems[0] = elem;
       }
+      if (updateProperties) {sendPropertiesOfSelected();}
     }
   }
   function clearSelection() {
+    if (!selectedElems.length) {return;}
     while (selectedElems.length) {selectedElems.pop().classList.remove('selected');}
     updateToolbarButtons(0);
+    sendPropertiesOfSelected();
   }
   function updateToolbarButtons(level) {
     if (level === 0) {
@@ -321,7 +376,7 @@ function TransformPanel(modeObj) {
     toolbar = this.node().getElementsByClassName('panel-toolbar')[0];
     this.setContentClass('transform-panel');
     this.setContent(navTree.node());
-    clearSelection();
+    updateToolbarButtons(0);
     mouseOverElem = null;
     mode.addChangeListener(modeChange);
     //Adding context menu handlers

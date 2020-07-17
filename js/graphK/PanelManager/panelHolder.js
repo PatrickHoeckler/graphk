@@ -22,13 +22,15 @@ function PanelHolder(...panels) {
   var callParent = defaultCallParent;
   //Public Attributes
   //Public Methods
-  this.onCallParent = function (executor = defaultCallParent) {
+  this.onCallParent = function(executor = defaultCallParent) {
     if (typeof(executor) !== 'function') { throw new TypeError(
       `Expected a function for the 'executor' argument. Got type ${typeof(executor)}`
     );}
     callParent = executor;
   }
   this.node = () => node;
+  this.contains = panel => panelList.includes(panel);
+  this.removePanel = panel => removePanelById(getPanelId(panel.node()));
   this.addPanels = addPanels;
   this.getHeight = () => !collapsed ? height : node.getBoundingClientRect().height;
   this.setHeight = setHeight;
@@ -58,8 +60,10 @@ function PanelHolder(...panels) {
     frame.children[id].classList.add('focus');
     focusedPanelID = id;
   }
-  function getPanelId(frameElem) {
-    return Array.prototype.indexOf.call(frame.children, frameElem);
+  function getPanelId(elem) {
+    var id = Array.prototype.indexOf.call(frame.children, elem);
+    if (id === -1) {id = panelList.findIndex(panel => panel.node() === elem);}
+    return id;
   }
   function setHeight(newHeight) {
     if (newHeight < PanelHolder.prototype.MIN_HEIGHT) {return false;}
@@ -75,7 +79,8 @@ function PanelHolder(...panels) {
     node.classList.remove('collapsed');
     collapsed = false;
   }
-  function removePanel(id) {
+  function removePanelById(id) {
+    if (id === -1) {return;}
     if (focusedPanelID === id) {focusPanel(id !== 0 ? 0 : 1);}
     panelList.splice(id, 1)[0];
     if (panelList.length) {
@@ -205,7 +210,7 @@ function PanelHolder(...panels) {
             body.appendChild(panelList[finalId].node());
           }
         }
-        else {finalId = id; stop(); removePanel(id);}
+        else {finalId = id; stop(); removePanelById(id);}
       });
     }
     window.addEventListener('mousemove', move);
@@ -237,7 +242,6 @@ function PanelHolder(...panels) {
       function onMouseUp({target, ctrlKey}) {
         clearTimeout(timeoutId); timeoutId = 0;
         window.removeEventListener('mouseup', onMouseUp);
-        if (ctrlKey) {removePanel(getPanelId(target)); return;} //DEBUG LINE
         focusPanel(getPanelId(target));
         if (node.classList.contains('collapsed')) {
           uncollapse();

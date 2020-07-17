@@ -38,7 +38,7 @@ let id = setInterval(function() {
 function startProgram() {
   const {
     GraphK, Mode, path,
-    loadFile, saveFile, getTransformsFiles, onFileAdd, captureImage
+    loadFile, saveFile, getTransformsFiles, onFileAdd, onPanelMenuClick, captureImage
   } = preloadedModules;
   preloadedModules = null;
 
@@ -46,6 +46,9 @@ function startProgram() {
   graphK.appendTo(document.body);
   window.onresize = () => graphK.resize();
   onFileAdd((e, fileNames) => graphK.readFiles(fileNames));
+  onPanelMenuClick(
+    (e, panelName, checked) => graphK.togglePanel(panelName, checked)
+  );
 
   graphK.onCallParent(function (message, details) {
     if (message === 'load-file') {return loadFile();}
@@ -104,7 +107,13 @@ function startProgram() {
               saveTo.push({name: pkgName, value: newFolder, type: 'pkg'});
               for (let tf of module.pkg) {newFolder.push(tf);}
             }
-            else {saveTo.push(module);}
+            else {
+              //must convert ECMAScript module object to normal object so it
+              //can be altered
+              const tf = {};
+              for (let key in module) {tf[key] = module[key];}
+              saveTo.push(tf);
+            }
           });
           importPromises.push(impPromise);
         }

@@ -1,9 +1,5 @@
 'use strict';
 
-//    COISAS PARA AJUSTAR NO FUTURO
-//
-//
-
 module.exports = {
   appendNewElement,
   changePosition,
@@ -54,15 +50,10 @@ function selectDataInRange(data, [low, high]) {
 
 //Error check functions
 function checkType(type, obj) {
-  if (!Array.isArray(type)) {type = [type];}
   for (let key in obj) {
     let keyType = typeof(obj[key]);
-    if (!type.some((value) => keyType === value)) { 
-      return {
-        key: key, //name of key with wrong type
-        type: typeof(obj[key]) //wrong type given
-      }
-    }
+    if (keyType === type) {continue;}
+    return `Expected type '${type}' for the argument '${key}', got '${keyType}'`;
   }
-  return null; //no type mismatch found
+  return ''; //no type mismatch found
 }

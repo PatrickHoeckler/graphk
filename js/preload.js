@@ -15,6 +15,7 @@ process.once('loaded', () => {
       saveFile: (data) => ipcRenderer.invoke('save:file', data),
       getTransformsFiles: () => ipcRenderer.invoke('transformations:names'),
       onFileAdd: (listener) => ipcRenderer.on('file:add', listener),
+      onPanelMenuClick: (listener) => ipcRenderer.on('panel:click', listener),
       captureImage: (rect) => {
         let {x, y, width, height} = rect;
         rect = {x, y, width, height};

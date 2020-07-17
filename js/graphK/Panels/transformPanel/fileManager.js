@@ -129,7 +129,6 @@ function FileManager() {
       if (canceled) {return {};}
       let value;
       try {value = calculateTransformSafely(transform.func, args, file.value);}
-      //try {value = transform.func(file.value, args);}
       catch (err) {throw err;}
       if (value === null || value === undefined) {return {};}
       setFileTransformValue(path, value);

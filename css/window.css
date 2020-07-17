@@ -3,6 +3,7 @@
   top: 0; left: 0;
   height: 100%; width: 100%;
 }
+.window {z-index: 9999;}
 .window .window-container {
   border-color: var(--window-border-color);
   border-width: 1px;

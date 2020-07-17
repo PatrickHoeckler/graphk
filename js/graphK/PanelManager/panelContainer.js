@@ -30,6 +30,11 @@ function PanelContainer(...panels) {
     callParent = executor;
   }
   this.node = () => node;
+  this.contains = panel => holderList.some(h => h.contains(panel));
+  this.removePanel = function(panel) {
+    let holder = holderList.find(h => h.contains(panel));
+    if (holder) {holder.removePanel(panel);}
+  }
   this.addPanels = addPanels;
   this.fitPanels = fitPanels;
   this.getWidth = () => width;

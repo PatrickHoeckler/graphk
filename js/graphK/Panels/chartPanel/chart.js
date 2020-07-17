@@ -181,7 +181,7 @@ function Chart(id = 0, _height = 150, bgColor = 'whitesmoke', axisColor = 'black
       }
     }
     else if (type === 'scatter') {
-      path = drawRegion.append('g');
+      path = drawRegion.append('g').attr('fill', color);
       path.selectAll('dot')
           .data(data)
           .enter()
@@ -189,25 +189,26 @@ function Chart(id = 0, _height = 150, bgColor = 'whitesmoke', axisColor = 'black
           .attr('cx', (d) => xScaleZoom(d[0]))
           .attr('cy', (d) => yScale(d[1]))
           .attr('r', 3)
-          .attr('fill', color);
     }
     else {
       path = drawRegion
         .append('path')
           .attr('fill', 'none')
           .attr('stroke', color)
-          .attr('stroke-width', 1.5)
-          .attr('stroke-linejoin', 'round')
-          .attr('stroke-linecap' , 'round');
+          .attr('stroke-width', 1.5);
       path.datum(data).attr('d', line);
     }
     pathArray.push(path);
   }
 
-  this.changeColor = function(color, where) {
+  this.changeColor = function(color, where, dataIndex = 0) {
     if (d3.color(color) === null) return;
     if (where === 'background') svg.style('background', color);
-    else if (where === 'stroke') path.attr('stroke',  color);
+    else if (where === 'data') {
+      const path = pathArray[dataIndex];
+      if (path.node().tagName === 'path') {path.attr('stroke',  color);}
+      if (path.node().tagName === 'g') {path.attr('fill',  color);}
+    }
     else if (where === 'axis') {
       gX.style('color', color);
       gY.style('color', color);
@@ -223,8 +224,79 @@ function Chart(id = 0, _height = 150, bgColor = 'whitesmoke', axisColor = 'black
     drawRegion.selectAll('*').remove();
   }
 
+  this.getChartProperties = function () {
+    const pObjs = [];
+    pObjs.push({
+      name: 'Chart', props: [
+        {name: 'Axis Color', type: 'color', value: gX.style('color')},
+        {name: 'Background', type: 'color', value: svg.style('background')}
+      ],
+      onInput: function({name, value}) {
+        if (name === 'Background') {svg.style('background', value);}
+        else {gX.style('color', value); gY.style('color', value);}
+      }
+    });
+    for (let i = 0, n = pathArray.length; i < n; i++) {
+      const path = pathArray[i];
+      const scatter = path.node().tagName !== 'path';
+      pObjs.push({
+        name: `Plot ${i + 1}`,
+        props: [
+          {
+            name: 'Type', type: 'select', option: ['normal', 'scatter'],
+            value: scatter ? 'scatter' : 'normal'
+          },
+          {
+            name: 'Size', type: 'range', min: 1, max: 8, step: 0.1,
+            value: Number.parseFloat(
+              scatter ? path.node().firstChild.getAttribute('r') : 
+              path.attr('stroke-width')
+            )
+          },
+          {
+            name: 'Color', type: 'color',
+            value: path.attr(scatter ? 'fill' : 'stroke'),
+          }
+        ],
+        onInput: propertyChanged
+      });
+    }
+    return pObjs;
+  }
+
 
   //Private Functions
+  function propertyChanged({name, value, objId}) {
+    const path = pathArray[objId - 1];
+    const scatter = path.node().tagName !== 'path';
+    if (name === 'Type') {
+      let newPath;
+      if (value === 'normal') { //scatter => normal
+        newPath = d3.create('svg:path')
+            .attr('stroke', path.attr('fill'))
+            .attr('fill', 'none')
+            .attr('stroke-width', path.node().firstChild.getAttribute('r'));
+        newPath.datum(path.selectAll('*').data()).attr('d', line);
+      }
+      else { //normal => scatter
+        newPath = d3.create('svg:g').attr('fill', path.attr('stroke'));
+        newPath.selectAll('dot').data(path.datum()).enter()
+          .append('circle')
+            .attr('cx', (d) => xScaleZoom(d[0]))
+            .attr('cy', (d) => yScale(d[1]))
+            .attr('r', path.attr('stroke-width'))
+      }
+      path.node().replaceWith(newPath.node());
+      pathArray[objId - 1] = newPath;
+    }
+    else if (name === 'Color') {
+      path.attr(scatter ? 'fill' : 'stroke', value);
+    }
+    else { //Size
+      if (scatter) {path.selectAll('*').attr('r', value);}
+      else {path.attr('stroke-width', value);}
+    }
+  }
   //  Zoom function
   function zoomed() {
     if (!pathArray.length) return;

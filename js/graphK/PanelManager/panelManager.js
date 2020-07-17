@@ -34,18 +34,33 @@ function PanelManager(...panels) {
     fitPanels();
     node.style.visibility = '';
   }
-  this.remove = 
   this.addPanels = addPanels;
   this.fitPanels = fitPanels;
+  this.contains = containsPanel;
+  this.togglePanel = function togglePanel(panel, show) {
+    if (!(panel instanceof Panel)) {
+      throw new TypeError('Wrong type of argument, expected a instanceof ' +
+      'Panel or an array. Check the function details for more information'
+    );}
+    if (show) {
+      if (!containsPanel(panel)) {addPanels(panel);}
+    }
+    else {
+      let container = containerList.find(c => c.contains(panel));
+      if (container) {container.removePanel(panel); fitPanels();}
+    }
+  }
   //Private Functions
+  function containsPanel(panel) {
+    return containerList.some(c => c.contains(panel));
+  }
   function addPanels(...panels) {
     let wasEmpty = !node.children.length;
     for (let panelList of panels) {
-      //If invalid argument
       if (!(panelList instanceof Panel) && !Array.isArray(panelList)) {
         throw new TypeError('Wrong type of argument, expected a instanceof ' +
         'Panel or an array. Check the function details for more information'
-      )}
+      );}
       let container;
       if (panelList instanceof Panel) { //Argument TYPE 1
         container = new PanelContainer(panelList);

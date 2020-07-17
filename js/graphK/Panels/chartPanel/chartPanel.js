@@ -146,9 +146,11 @@ function ChartPanel(modeObj) {
       if (selectedElems.includes(elem)) {return;}
       elem.classList.add('selected');
       selectedElems.push(elem);
+      callParent('properties', {pObjs: [{name: 'Multiple Files'}]});
     }
     else {
       //If clicked outside any chart
+      const updateProperties = selectedElems.length > 1 || selectedElems[0] !== elem;
       if (!elem) {return clearSelection();}
       while (selectedElems.length > 1) {
         selectedElems.pop().classList.remove('selected');
@@ -159,11 +161,16 @@ function ChartPanel(modeObj) {
         elem.classList.add('selected');
         selectedElems[0] = elem;
       }
+      if (updateProperties) { callParent('properties', {
+        pObjs: charts[findChartIndex(elem)].getChartProperties()
+      });}
     }
   }
   function clearSelection() {
+    if (!selectedElems.length) {return;}
     while (selectedElems.length) {selectedElems.pop().classList.remove('selected');}
     updateToolbarButtons(pContents.children.length ? 1 : 0);
+    callParent('properties', {pObjs: []});
   }
   function updateToolbarButtons(level) {
     if (level === 0) {

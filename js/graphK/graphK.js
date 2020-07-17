@@ -1,7 +1,8 @@
 "use strict";
 
-const {Mode} = require('./auxiliar/mode.js')
+const {Mode} = require('./auxiliar/mode.js');
 module.exports = {GraphK, Mode};
+
 const {appendNewElement, defaultCallParent} = require('./auxiliar/auxiliar.js');
 const {Window} = require('./auxiliar/window.js');
 const {Context} = require('./auxiliar/context.js');
@@ -11,7 +12,9 @@ const {ArgsSelector} = require('./auxiliar/argsSelector.js');
 const {ChartPanel} = require('./Panels/chartPanel/chartPanel.js');
 const {RoutinePanel} = require('./Panels/routinePanel/routinePanel.js');
 const {TransformPanel} = require('./Panels/transformPanel/transformPanel.js');
+const {PropertiesPanel} = require('./Panels/propertiesPanel/propertiesPanel.js');
 const {PanelManager} = require('./PanelManager/panelManager.js');
+const panel = require('./PanelManager/panel.js');
 
 function GraphK() {
   //constants
@@ -31,7 +34,8 @@ function GraphK() {
   const panels = {
     transform: new TransformPanel(mode),
     routine: new RoutinePanel(mode),
-    chart: new ChartPanel(mode)
+    chart: new ChartPanel(mode),
+    properties: new PropertiesPanel()
   };
 
   //Public Attributes
@@ -53,6 +57,20 @@ function GraphK() {
     panelManager.appendTo(node);
   }
   this.setTransforms = function (transforms) {
+    //Transforms are sent in ECMAScript Module objects, that can't be altered
+    //This function bellow converts this ESM objects to normal objects that
+    //can be edited. It also adds default values if some property was not set
+    //in the module file (i.e. the 'type' property default is 'normal')
+    (function checkTransforms(tfFolder) {
+      for (let tfFile of tfFolder) {
+        if (tfFile.value) { //if tfFile is also a folder
+          checkTransforms(tfFile.value);
+        }
+        else { //if tfFile is a transformation file
+          if (!tfFile.type) {tfFile.type = 'normal';}
+        }
+      }
+    })(transforms.value);
     tfSelector.updateTransforms(transforms);
     panels.transform.updateTransforms(transforms);
     navTree.clear();
@@ -61,6 +79,15 @@ function GraphK() {
   this.getTransformFromPath = panels.transform.getTransformFromPath;
   this.getDataFromPath = panels.transform.getDataFromPath;
   this.readFiles = panels.transform.readFiles;
+  this.togglePanel = function(panelName, show) {
+    var panel;
+    if (panelName === 'Files')           {panel = panels.transform;}
+    else if (panelName === 'Routines'  ) {panel = panels.routine;}
+    else if (panelName === 'Charts'    ) {panel = panels.chart;}
+    else if (panelName === 'Properties') {panel = panels.properties;}
+    else {return;}
+    panelManager.togglePanel(panel, show);
+  }
   this.onCallParent = function (executor = defaultCallParent) {
     if (typeof(executor) !== 'function') { throw new TypeError(
       `Expected a function for the 'executor' argument. Got type ${typeof(executor)}`
@@ -128,6 +155,10 @@ function GraphK() {
     }
     if (message === 'arguments') {
       return getArguments(details.argsFormat, details.windowTitle);
+    }
+    if (message === 'properties') {
+      panels.properties.openProperties(details.pObjs);
+      return Promise.resolve(null);
     }
     return Promise.reject(new Error('Invalid message to parent'));
   }
@@ -205,16 +236,46 @@ function GraphK() {
     panelManager.addPanels(
       //PanelContainer[0]
       [
-        panels.transform, //PanelHolder[0]
-        panels.routine,   //PanelHolder[1]
+        //PanelHolder[0]
+        [panels.transform, panels.routine],
+        //PanelHolder[1]
+        panels.properties
       ],
       //PanelContainer[1]
       panels.chart
     );
-    
-    panels.chart.onCallParent(respondChild);
-    panels.transform.onCallParent(respondChild);
-    panels.routine.onCallParent(respondChild);
+
+    for (let key in panels) {
+      if (panels[key].onCallParent) {
+        panels[key].onCallParent(respondChild);
+      }
+    }
+
+    panels.properties.openProperties([
+      {
+        name: '5 Dollars', 
+        props: [
+          {name: 'Name', type: 'range', value: '5', min: 1, max: 8, step: 0.1},
+          {name: 'Father', type: 'number', value: 'Altair'},
+          {
+            name: 'Color', type: 'color', value: '#1e4ec8',
+            //onColorChange: (hex) => node.style.color = hex,
+            //onColorSelect: (rgb) => console.log(rgb),
+          }
+        ],
+        onChange: (name, value) => console.log(name, value)
+      },
+      {
+        name: 'File1.csv',
+        props: [
+          {
+            name: 'Play only', type: 'select', value: 'Music',
+            option: ['Pomme', 'Music', 'A Lonely One']
+          }
+        ],
+        onChange: (name, value) => console.log(name, value)
+      }
+    ]);
 
     //Adding Event Listeners
     navTree.node().addEventListener('mouseover', function ({target}) {
