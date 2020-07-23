@@ -157,8 +157,23 @@
 }
 
 /*************CHART PANEL****************/
-.chart-panel {
+.chart-panel {padding: 4px;}
+.chart-panel .ns-resize {
+  cursor: ns-resize; height: 8px; margin: -4px 0px; z-index: 1;
+}
+.chart-panel .chart-container {
+  display: flex; flex-direction: column;
   padding: 4px;
+}
+.chart-panel .chart {
+  width: 100%; height: 100%;
+  border: 1px solid whitesmoke;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+.chart-panel .warning {
+  fill: red;
+  stroke: crimson;
 }
 
 /**********PROPERTIES PANEL*************/
@@ -210,10 +225,7 @@
   transition: border-color 300ms;
 }
 .properties-panel .property-value:disabled {opacity: 0.6;}
-.properties-panel .property-value:focus {
-  border-color: darkgoldenrod;
-  outline: none;
-}
+.properties-panel .property-value:focus {outline: none;}
 .properties-panel .property-value.warning{border-color: crimson}
 .properties-panel input.property-value {padding: 0px 4px;}
 .properties-panel input[type='number'].property-value::-webkit-outer-spin-button,
@@ -240,6 +252,12 @@
   width: 10px; height: 12px;
   background-color: rgb(76, 119, 211);
 }
+.properties-panel button.property-value {
+  color: black;
+  background-color: whitesmoke;
+  border: 1px ridge gray;
+}
+.properties-panel button.property-value:active {border-style: groove;}
 .properties-panel select.property-value > option {
   background-color: inherit;
 }

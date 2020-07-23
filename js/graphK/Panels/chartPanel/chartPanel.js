@@ -1,9 +1,5 @@
 "use strict";
 
-//    COISAS PARA AJUSTAR NO FUTURO
-// - Ver talvez um jeito melhor de escolher as cores para desenhar os gráficos
-//
-
 module.exports = {ChartPanel};
 
 const {defaultCallParent} = require('../../auxiliar/auxiliar.js');
@@ -29,7 +25,7 @@ function ChartPanel(modeObj) {
   );}
   //Constants
   const mode = modeObj;
-  const charts = []; //array of Chart
+  const chartArray = []; //array of Chart object
   const selectedElems = [];
   
   //Private Properties
@@ -46,83 +42,89 @@ function ChartPanel(modeObj) {
     );}
     callParent = executor;
   }
-  this.chartCount = () => charts.length;
-  this.setBrush = (enable) => charts.forEach(c => c.setBrush(enable));
+  this.chartCount = () => chartArray.length;
+  this.setBrush = (enable) => chartArray.forEach(c => c.setBrush(enable));
   this.addChart = addChart;
-  this.clearChart = clearChart;
   this.removeChart = removeChart;
-  this.resize = () => charts.forEach(c => c.reScale());
+  this.resize = () => chartArray.forEach(c => c.reScale());
 
   //Private Functions
-  function addChart(height = 250) {
-    if (typeof(height) !== 'number') {height = 250;}
-    else if (height < 100) {height = 100;}
-    else if (height > 500) {height = 500;}
-    let newChart = new Chart(charts.length);
-    pContents.appendChild(newChart.node());
-    charts.push(newChart);
+  function addHighlight({target}) {
+    if (mouseOverElem) {return;}
+    if (!(mouseOverElem = getChartContainer(target))) {return;}
+    mouseOverElem.classList.add('highlight');
+  }
+  function removeHighlight() {
+    if (!mouseOverElem) {return;}
+    mouseOverElem.classList.remove('highlight');
+    mouseOverElem = null;
+  }
+  function addChart() {
+    let newChart = new Chart(chartArray.length);
+    newChart.appendTo(pContents);
+    chartArray.push(newChart);
     if (toolbarLevel === 0) {updateToolbarButtons(1);}
   }
   function clearChart(chartElem) {
-    let chart = charts[findChartIndex(chartElem)];
+    let chart = chartArray[findChartIndex(chartElem)];
     if (!chart) {return false;}
     chart.clear();
+    if (selectedElems.length === 1 && selectedElems[0] === chart.node()) {
+      sendPropertiesOfSelected();
+    }
     return true;
   }
   function removeChart(chartElem) {
     let index = findChartIndex(chartElem);
-    if (index === null) {return;}
-    chartElem = charts[index].node();
-    charts[index].remove(); //remove all elements of the chart from document
-    charts.splice(index, 1); //remove Chart from array
+    if (index === -1) {return;}
+    const chart = chartArray.splice(index, 1)[0];
+    chart.remove();
     //reindexes all remaining charts, to avoid addition of chart with same index
     //NOTE: the index is used to reference the clipPath element inside the chart
-    for (let i = 0; i < charts.length; i++) charts[i].reindex(i);
+    chartArray.forEach((c, i) => c.reindex(i));
 
     //removes chartElem from selectedElems if present, also update toolbar
-    index = selectedElems.indexOf(chartElem);
-    if (index !== -1) {selectedElems.splice(index, 1);}
+    index = selectedElems.indexOf(chart.node());
+    if (index !== -1) {
+      selectedElems.splice(index, 1);
+      sendPropertiesOfSelected();
+    }
     if (selectedElems.length === 0) {
       updateToolbarButtons(pContents.children.length ? 1 : 0);
     }
   }
   function findChartIndex(chartElem) {
-    try {
-      for (let i = 0; i < charts.length; i++) {
-        if (charts[i].node().contains(chartElem)) {return i;}
-      }
-    } catch (err) {return null;}
-    return null;
+    return chartArray.findIndex(c => c.node().contains(chartElem));
   }
-  function getContainingChart(chartElem) {
+  function getChartContainer(chartElem) {
     for (let curElem = chartElem;; curElem = curElem.parentElement) {
       if (!curElem || curElem === pContents) {return null;}
-      if (curElem.classList.contains('chart-body')) {return curElem;}
+      if (curElem.classList.contains('chart-container')) {return curElem;}
     }
   }
   function getDataFromBrush (brush) {
     //finds the chart which contains the brush targeted
-    let targetChart = null;
-    for (let i = 0; i < charts.length; i++) {
-      if (charts[i].node().contains(brush)) {
-        targetChart = charts[i];
-        break;
-      }
-    }
+    let targetChart = chartArray[findChartIndex(brush)];
     if (!targetChart) {return null;}
-    
-    //clears all brushes except the targeted one
-    charts.forEach(c => {if (c !== targetChart) {c.clearBrush(false)}});
-    //gets targeted brush data, sends a warning if data returned is incomplete
     let brushData = targetChart.getDataFromBrush();
-    if (brushData && brushData.length > 1) {return brushData;}
-    if (brushData === null) {
-      targetChart.brushAlert('Só é possível fazer a seleçao quando existe apenas uma curva plotada');
+    if (brushData.brushed.length === 0) {targetChart.brushAlert(
+      'Seleção não capturou pelo menos 2 pontos de nenhuma curva'
+    );}
+    else {chartArray.forEach(c => c.clearBrush());}
+    return brushData;
+  }
+  function sendPropertiesOfSelected() {
+    if (selectedElems.length > 1) {
+      callParent('properties', {pObjs: [{name: 'Multiple Charts'}]});
     }
-    else if (brushData.length === 1) {
-      targetChart.brushAlert('Seleção não capturou pelo menos 2 pontos');
+    else if (selectedElems.length === 1) {
+      callParent('properties', {pObjs:
+        chartArray[findChartIndex(selectedElems[0])].getChartProperties()
+      });
     }
-    return null;
+    else {
+      callParent('properties', {pObjs: []});
+    }
   }
   function executeToolbarAction(buttonId, targetElems) { return function execute() 
   {
@@ -130,13 +132,14 @@ function ChartPanel(modeObj) {
     else if (buttonId === 1) {
       let enable = !toolbar.children[buttonId].classList.contains('pressed');
       toolbar.children[buttonId].classList.toggle('pressed');
-      charts.forEach(c => c.setBrush(enable));
+      chartArray.forEach(c => c.setBrush(enable));
     }
     else if (buttonId === 2) {
       for (let target of targetElems) {clearChart(target);}
     }
     else if (buttonId === 3) {
       while (targetElems.length) {removeChart(targetElems.pop());}
+      sendPropertiesOfSelected();
     }
     window.removeEventListener('mouseup', execute);
   }}
@@ -146,7 +149,7 @@ function ChartPanel(modeObj) {
       if (selectedElems.includes(elem)) {return;}
       elem.classList.add('selected');
       selectedElems.push(elem);
-      callParent('properties', {pObjs: [{name: 'Multiple Files'}]});
+      sendPropertiesOfSelected();
     }
     else {
       //If clicked outside any chart
@@ -161,16 +164,14 @@ function ChartPanel(modeObj) {
         elem.classList.add('selected');
         selectedElems[0] = elem;
       }
-      if (updateProperties) { callParent('properties', {
-        pObjs: charts[findChartIndex(elem)].getChartProperties()
-      });}
+      if (updateProperties) {sendPropertiesOfSelected();}
     }
   }
   function clearSelection() {
     if (!selectedElems.length) {return;}
     while (selectedElems.length) {selectedElems.pop().classList.remove('selected');}
     updateToolbarButtons(pContents.children.length ? 1 : 0);
-    callParent('properties', {pObjs: []});
+    sendPropertiesOfSelected();
   }
   function updateToolbarButtons(level) {
     if (level === 0) {
@@ -192,12 +193,13 @@ function ChartPanel(modeObj) {
 
   //Initialize object
   (function() {
+    mouseOverElem = null;
     //Inheriting from Panel Object
     Panel.call(this, 'Gráficos', [
       {className: 'icon-plus', tooltip: 'New Chart'},
       {className: 'icon-square-corners', tooltip: 'Select Region'},
       {className: 'icon-diameter', tooltip: 'Clear Chart'},
-      {className: 'icon-x'   , tooltip: 'Remove Chart'},
+      {className: 'icon-x', tooltip: 'Remove Chart'},
     ]);
     toolbar = this.node().getElementsByClassName('panel-toolbar')[0];
     pContents = this.node().getElementsByClassName('panel-body')[0];
@@ -208,37 +210,26 @@ function ChartPanel(modeObj) {
     //Adding event handlers
     pContents.addEventListener('drop', (e) => {
       e.preventDefault();
-      let chart = charts[findChartIndex(e.target)];
+      let chart = chartArray[findChartIndex(e.target)];
       if (!chart) {return;}
       if (e.ctrlKey) {chart.clear();}
       let {type, value} = JSON.parse(e.dataTransfer.getData('text'));
       chart.plot(value, strokeColor[nextColor], type);
       nextColor = (nextColor + 1) % strokeColor.length;
-    });
-    pContents.addEventListener('dragover', (e) => {
-      if (!mouseOverElem) {
-        if (!(mouseOverElem = getContainingChart(e.target))) {return;}
-        mouseOverElem.classList.add('highlight');
+      if (selectedElems.length === 1 && selectedElems[0] === chart.node()) {
+        sendPropertiesOfSelected();
       }
-      e.preventDefault();
     });
-    pContents.addEventListener('dragleave', (e) => {
-      if (!mouseOverElem) {return;}
-      mouseOverElem.classList.remove('highlight');
-      mouseOverElem = null;
+    pContents.addEventListener('dragover', event => {
+      addHighlight(event);
+      event.preventDefault();
     });
-    pContents.addEventListener('mouseover', (e) => {
-      if (!(mouseOverElem = getContainingChart(e.target))) {return;}
-      mouseOverElem.classList.add('highlight');
-    });
-    pContents.addEventListener('mouseout', (e) => {
-      if (!mouseOverElem) {return;}
-      mouseOverElem.classList.remove('highlight');
-      mouseOverElem = null;
-    });
+    pContents.addEventListener('dragleave', removeHighlight);
+    pContents.addEventListener('mouseover', addHighlight);
+    pContents.addEventListener('mouseout', removeHighlight);
     pContents.addEventListener('click', ({target, ctrlKey}) => {
       if (!mode.is(mode.NORMAL)) {return;}
-      updateSelectedElems(getContainingChart(target), ctrlKey);
+      updateSelectedElems(getChartContainer(target), ctrlKey);
     });
     pContents.addEventListener('dblclick', (e) => {
       if (!mode.is(mode.DELETE)) {return;}
@@ -257,13 +248,15 @@ function ChartPanel(modeObj) {
       ]}).then((item) => {
         if (!item) {return;}
         if (item === 'select') {
-          let value = getDataFromBrush(target);
-          if (value) {callParent('add-data', {data: {
-            name: 'Selection', value
-          }});}
+          const {brushed} = getDataFromBrush(target);
+          for (let i = 0, n = brushed.length; i < n; i++) {
+            callParent('add-data', {data: {
+              name: `Selection ${i + 1}`, value: brushed[i]
+            }});
+          }
         }
         else if (item === 'capture') {
-          target = getContainingChart(target).children[0];
+          target = getChartContainer(target).children[0];
           callParent(item, {target});}
         else if (item === 'remove') {removeChart(target);}
         else if (item === 'clear') {clearChart(target);}

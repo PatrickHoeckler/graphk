@@ -27,10 +27,14 @@ function PropertiesPanel() {
   //     header. Can be omitted (the header will not be created).
   //   - props (object[]): an array describing its properties.
   //   - onChange (function): callback called everytime a property is changed.
-  //     Not fired when the color changes (use onColorInput and onColorChange
-  //     for this situations). The function parameters are:
-  //      -- callback(pName, newValue)
-  //   - onInput
+  //      -- callback({
+  //        name: The name of the property
+  //        value: The value of the property
+  //        objId: The index of the property container, i.e., the element of
+  //               class 'property-object'
+  //      })
+  //   - onInput (function): callback called everytime a property calls the
+  //   input event. The callback argument is the same as for the onChange key.
   //  The props key is an array containing objects representing the properties.
   //  These objects can have the following keys:
   //   - name (string): the property name
@@ -45,15 +49,13 @@ function PropertiesPanel() {
   //      The value key will start the current selected option, if the value is
   //      not valid, the first item will be selected.
   //      -- 'color': a color property, will open a selector to choose any color
+  //      -- 'button': a simple button that fires the onInput and onChange
+  //      events when clicked.
   //   - min (number): the minimum value for the range type of property
   //   - max (number): the maximum value for the range type of property
   //   - step (number): the intervals of the 'range' type of property
   //   - option (string[]): all the values for the drop-down menu. Only needed
   //   for properties of type 'select'.
-  //   - onColorChange (function): only used in properties of type === 'color'.
-  //   Fired when a color is selected and the ColorPicker window closes.
-  //   - onColorInput (function): only used in properties of type === 'color'.
-  //   Fired everytime the color is changed before selection.
   //   
   this.openProperties = function(pObjs = []) {
     pContents.innerHTML = '';
@@ -158,9 +160,18 @@ function PropertiesPanel() {
       prValueElem.setAttribute('min', p.min);
       prValueElem.setAttribute('max', p.max);
     }
+    else if (p.type === 'button') {
+      prValueElem = appendNewElement(prContainer, 'button', 'property-value');
+      prValueElem.setAttribute('type', 'button');
+      prValueElem.innerHTML = p.value;
+      prValueElem.addEventListener('click', ({target}) => {
+        target.dispatchEvent(new Event('input', {bubbles: true}));
+        target.dispatchEvent(new Event('change', {bubbles: true}));
+      });
+    }
     else { //type === 'number' or defaults to type === 'text'
       prValueElem = appendNewElement(prContainer, 'input', 'property-value');
-      prValueElem.setAttribute('type', p.type === 'number' ? 'number' : 'text');
+      prValueElem.setAttribute('type', p.type === 'number' ? p.type : 'text');
       prValueElem.setAttribute('value', p.value);
     }
     if (p.disabled) {prValueElem.disabled = true;}

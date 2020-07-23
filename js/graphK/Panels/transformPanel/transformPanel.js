@@ -5,6 +5,7 @@ const {appendNewElement, defaultCallParent} = require('../../auxiliar/auxiliar.j
 const {NavTree} = require('../../auxiliar/navTree.js');
 const {Panel} = require('../../PanelManager/panel.js');
 const {FileManager} = require('./fileManager.js');
+const { tree } = require('d3');
 
 function TransformPanel(modeObj) {
   if (modeObj === null || typeof(modeObj) !== 'object') {throw new Error(
@@ -203,8 +204,9 @@ function TransformPanel(modeObj) {
   function deleteFromTree(treeElem) {
     treeElem = navTree.getContainingElement(treeElem);
     let path = navTree.findPath(treeElem);
+    let isTopFolder = navTree.isTopFolder(treeElem);
     if (path === null) {return false;}
-    if (navTree.isTopFolder(treeElem)) {treeElem.parentElement.remove();}
+    if (isTopFolder) {treeElem.parentElement.remove();}
     else if (treeElem.classList.contains('ready')) {
       treeElem.classList.remove('ready', 'highlight', 'selected');
       treeElem.draggable = false;
@@ -218,6 +220,15 @@ function TransformPanel(modeObj) {
     let id = selectedElems.indexOf(treeElem);
     if (id !== -1) {
       selectedElems.splice(id, 1);
+      //Must remove all selected elements that were contained
+      //inside the deleted folder
+      if (isTopFolder) {
+        treeElem = treeElem.parentElement;
+        for (let i = 0; i < selectedElems.length; i++) {
+          if (!treeElem.contains(selectedElems[i])) {continue;}
+          selectedElems.splice(i, 1);
+        }
+      }
       sendPropertiesOfSelected();
       if (selectedElems.length === 0) {updateToolbarButtons(0);}
     }
@@ -305,6 +316,7 @@ function TransformPanel(modeObj) {
         //inside another element that was already removed
         if (navTree.node().contains(target)) {deleteFromTree(target);}
       }
+      sendPropertiesOfSelected();
     }
     //If clicked on configure transforms
     else if (buttonId === 4) {callParent('configure-transforms');}

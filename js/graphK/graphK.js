@@ -53,8 +53,11 @@ function GraphK() {
     panels.chart.resize();
   }
   this.appendTo = (elem) => {
+    node.style.visibility = 'hidden';
     elem.appendChild(node);
     panelManager.appendTo(node);
+    panels.chart.resize();
+    node.style.visibility = '';
   }
   this.setTransforms = function (transforms) {
     //Transforms are sent in ECMAScript Module objects, that can't be altered
@@ -244,38 +247,13 @@ function GraphK() {
       //PanelContainer[1]
       panels.chart
     );
+    panels.chart.resize();
 
     for (let key in panels) {
       if (panels[key].onCallParent) {
         panels[key].onCallParent(respondChild);
       }
     }
-
-    panels.properties.openProperties([
-      {
-        name: '5 Dollars', 
-        props: [
-          {name: 'Name', type: 'range', value: '5', min: 1, max: 8, step: 0.1},
-          {name: 'Father', type: 'number', value: 'Altair'},
-          {
-            name: 'Color', type: 'color', value: '#1e4ec8',
-            //onColorChange: (hex) => node.style.color = hex,
-            //onColorSelect: (rgb) => console.log(rgb),
-          }
-        ],
-        onChange: (name, value) => console.log(name, value)
-      },
-      {
-        name: 'File1.csv',
-        props: [
-          {
-            name: 'Play only', type: 'select', value: 'Music',
-            option: ['Pomme', 'Music', 'A Lonely One']
-          }
-        ],
-        onChange: (name, value) => console.log(name, value)
-      }
-    ]);
 
     //Adding Event Listeners
     navTree.node().addEventListener('mouseover', function ({target}) {

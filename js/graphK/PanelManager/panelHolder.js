@@ -239,7 +239,7 @@ function PanelHolder(...panels) {
         reorderPanels(getPanelId(target), x);
       }, 200);
       window.addEventListener('mouseup', onMouseUp);
-      function onMouseUp({target, ctrlKey}) {
+      function onMouseUp({target}) {
         clearTimeout(timeoutId); timeoutId = 0;
         window.removeEventListener('mouseup', onMouseUp);
         focusPanel(getPanelId(target));

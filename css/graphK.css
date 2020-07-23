@@ -15,21 +15,6 @@
 .graphK .highlight {background-color: var(--highlight-color, transparent);}
 .graphK .selected {background-color: var(--select-color, transparent);}
 
-/*** chart-body ***/
-.graphK .chart-body {
-  box-sizing: border-box;
-  width: 100%;
-  padding: 4px;
-}
-
-.graphK .height-resizer{
-  cursor: s-resize;
-  height: 10px;
-  width: 100%;
-  margin: -5px 0px;
-  transform: translateY(0px);
-}
-
 .graphK           .brush>.overlay {cursor: auto;}
 .graphK .inactive .brush>.overlay {pointer-events: none;}
 .graphK.drag      .brush>.overlay {pointer-events: none;}

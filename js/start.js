@@ -44,7 +44,7 @@ function startProgram() {
 
   graphK = new GraphK();
   graphK.appendTo(document.body);
-  window.onresize = () => graphK.resize();
+  window.onresize = waitForEndResize(graphK.resize, 200);
   onFileAdd((e, fileNames) => graphK.readFiles(fileNames));
   onPanelMenuClick(
     (e, panelName, checked) => graphK.togglePanel(panelName, checked)
@@ -122,5 +122,20 @@ function startProgram() {
     })(tfFiles.value, '../transformations', transforms.value)
     .then(() => resolve(transforms));
   });}
+}
 
-}})();
+function waitForEndResize(callback, ms) {
+  var t0, intervalID = 0;
+  return function() {
+    t0 = Date.now();
+    if (intervalID) {return;}
+    intervalID = setInterval(function() {
+      if (Date.now() - t0 < 200) {return;}
+      clearInterval(intervalID);
+      intervalID = 0;
+      callback();
+    }, ms);
+  }
+}
+
+})();
