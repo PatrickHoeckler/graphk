@@ -2,8 +2,9 @@
 
 module.exports = {Chart};
 
-const {appendNewElement} = require('../../auxiliar/auxiliar.js');
+const {appendNewElement, defaultCallParent} = require('../../auxiliar/auxiliar.js');
 const d3 = require('d3');
+const {DataHandler} = require('../../auxiliar/dataHandler.js');
 function Chart(id = 0, height = 150) {
   //Constants
   const margin = {top: 10, right: 10, bottom: 20, left: 40};
@@ -32,10 +33,16 @@ function Chart(id = 0, height = 150) {
   const brushX = d3.brushX();
 
   //Private Properties
-  var xDomainEmpty, yDomainEmpty;
   var isEmpty;
+  var callParent = defaultCallParent;
 
   //Public Methods
+  this.onCallParent = function(executor = defaultCallParent) {
+    if (typeof(executor) !== 'function') { throw new TypeError(
+      `Expected a function for the 'executor' argument. Got type ${typeof(executor)}`
+    );}
+    callParent = executor;
+  }
   this.reScale = reScale;
   this.node = () => node;
   this.remove = () => node.remove();
@@ -70,17 +77,16 @@ function Chart(id = 0, height = 150) {
     });
   }
   this.getDataFromBrush = () => {
-    //can't call xScaleZoom.invert() because this scale does not consider
+    //can't call xScaleZoom.invert because this scale does not consider
     //the translation part of the zoom. Must create a new tempScale based
     //on the current zoomTransform being aplied
     const tempScale = d3.zoomTransform(svg.node()).rescaleX(xScaleData);
-    const [x0, x1] = d3.brushSelection(gBrush.node())
-      .map(d => tempScale.invert(d));
+    const [x0, x1] = d3.brushSelection(gBrush.node()).map(tempScale.invert);
     const out = {interval: [x0, x1], brushed: []};
-    for (let plot of plotArray) {
-      const data = plot.type === 'normal' ? plot.sel.datum() :
-        plot.type === 'scatter' ? plot.sel.selectAll('circle').data() :
-        null;
+    for (let {dataHandler} of plotArray) {
+      if (dataHandler.type !== 'normal' && dataHandler.type !== 'scatter') {return;}
+      const data = !dataHandler.isHierarchy ?
+        dataHandler.value : dataHandler.getRangeAtLevel(x0, x1, 0);
       if (!data) {continue;}
       const brushedData = [];
       for (let point of data) {
@@ -90,53 +96,56 @@ function Chart(id = 0, height = 150) {
     }
     return out;
   }
-  this.plot = function(data, color, type) {
+  this.plot = function(dataHandler, color) {
+    let data = dataHandler.value;
     if (typeof data === 'number') {
-      if (type === 'x-axis') {data = [[data, null]];}
-      else {data = [[null, data]]; type = 'y-axis';}
+      if (dataHandler.type === 'x-axis') {data = [[data, null]];}
+      else {
+        data = [[null, data]];
+        dataHandler.type = 'y-axis';
+      }
     }
+    else if (dataHandler.isHierarchy) {data = dataHandler.getLastLevel().data;}
     if (updateScaleDomain(data)) {
       gxAxis.call(xAxis); gyAxis.call(yAxis);
       replotAll();
     }
     //Creating Plot elements
-    const options = {data, color, size: type === 'scatter' ? 3 : 1.5};
+    const options = {color, size: dataHandler.type === 'scatter' ? 3 : 1};
     var plotSel;
-    if (type === 'normal')       {plotSel = linePlot(null, options);}
-    else if (type === 'scatter') {plotSel = scatterPlot(null, options);}
-    else if (type === 'x-axis')  {plotSel = constantPlot(null, options);}
-    else if (type === 'y-axis')  {plotSel = constantPlot(null, options);}
-    else {throw new Error(`'${type}' is not a valid value for the type argument`);}
+    if (dataHandler.type === 'x-axis' || dataHandler.type === 'y-axis') {
+      plotSel = constantPlot(null, data, options);
+    }
+    else if (dataHandler.type === 'normal') {
+      if (dataHandler.isHierarchy) {
+        data = dataHandler.getRange(...xScaleZoom.domain());
+      }
+      plotSel = linePlot(null, data, options);
+    }
+    else if (dataHandler.type === 'scatter') {
+      if (dataHandler.isHierarchy) {data = dataHandler.getLevel(0).data;}
+      plotSel = scatterPlot(null, data, options);
+    }
+    else {throw new Error(
+      `'${dataHandler.type}' is not a valid value for the data type`
+    );}
     gPlot.append(() => plotSel.node());
-    plotArray.push({sel: plotSel, type});
+    //must copy the dataHandler object because the original can be changed
+    //from the outside
+    dataHandler = new DataHandler(dataHandler);
+    plotArray.push({sel: plotSel, dataHandler, type: dataHandler.type});
     isEmpty = false;
   }
-  this.clear = function() {
-    plotArray.length = 0;
-    xScaleData.domain([0, 1]); yScaleData.domain([0, 1]);
-    xScaleZoom.domain([0, 1]); yScaleZoom.domain([0, 1]);
-    zoom.transform(svg, d3.zoomIdentity);
-    xAxis.scale(xScaleData); yAxis.scale(yScaleData);
-    gxAxis.selectAll('*').remove(); gyAxis.selectAll('*').remove();
-    gPlot.selectAll('*').remove();
-    gPlot.attr('transform', null);
-    gBrush.call(brushX.clear);
-    isEmpty = true;
-  }
+  this.clear = clear;
   this.getChartProperties = function () {
     const pObjs = [];
     pObjs.push({
       name: 'Chart', props: [
         {name: 'Axis Color', type: 'color', value: gxAxis.style('color')},
         {name: 'Background', type: 'color', value: svg.style('background')},
-        {name: 'Axis', type: 'button', value: 'Rescale to fit'}
       ],
       onInput: function({name, value}) {
         if (name === 'Background') {svg.style('background', value);}
-        else if (name === 'Axis') {
-          gxAxis.call(xAxis); gyAxis.call(yAxis);
-          replotAll();
-        }
         else {gxAxis.style('color', value); gyAxis.style('color', value);}
       }
     });
@@ -155,7 +164,8 @@ function Chart(id = 0, height = 150) {
           {
             name: 'Color', type: 'color',
             value: plot.sel.attr(isScatter ? 'fill' : 'stroke'),
-          }
+          },
+          {name: 'Remove', type: 'button'}
         ]
       };
       if (plot.type === 'normal' || plot.type === 'scatter') {
@@ -172,8 +182,12 @@ function Chart(id = 0, height = 150) {
           if (name !== 'Value') {return;}
           value = Number.parseFloat(value);
           let data = plot.type === 'x-axis' ? [[value, null]] : [[null, value]];
-          if (updateScaleDomain(data)) {replotAll();}
-          constantPlot(plot.sel, {data});
+          plot.sel.datum(null);
+          if (updateScaleDomain() + updateScaleDomain(data)) {
+            plot.sel.data(data);
+            gxAxis.call(xAxis); gyAxis.call(yAxis); replotAll();
+          }
+          else {constantPlot(plot.sel, data);}
         }
       }
       pObjs.push(propObj);
@@ -182,10 +196,32 @@ function Chart(id = 0, height = 150) {
   }
 
   //Private Functions
+  function clear() {
+    plotArray.length = 0;
+    updateScaleDomain();
+    zoom.transform(svg, d3.zoomIdentity);
+    gxAxis.selectAll('*').remove(); gyAxis.selectAll('*').remove();
+    gPlot.selectAll('*').remove();
+    gPlot.attr('transform', null);
+    gBrush.call(brushX.clear);
+    isEmpty = true;
+  }
   function replotAll() {
     for (let plot of plotArray) {
-      if (plot.type === 'normal') {linePlot(plot.sel);}
-      else if (plot.type === 'scatter') {scatterPlot(plot.sel);}
+      if (plot.type === 'normal') {
+        if (plot.dataHandler.isHierarchy) {
+          let data = plot.dataHandler.getRange(...xScaleZoom.domain());
+          linePlot(plot.sel, data);
+        }
+        else {linePlot(plot.sel);}
+      }
+      else if (plot.type === 'scatter') {
+        if (plot.dataHandler.isHierarchy) {
+          let data = plot.dataHandler.getRange(...xScaleZoom.domain());
+          scatterPlot(plot.sel, data);
+        }
+        else {scatterPlot(plot.sel);}
+      }
       else {constantPlot(plot.sel);}
     }
   }
@@ -220,86 +256,88 @@ function Chart(id = 0, height = 150) {
     if (name === 'Type') {
       let plotSel;
       if (value === 'normal') { //scatter => normal
-        plotSel = linePlot(null, {
-          data: plot.sel.selectAll('*').data(),
+        let data = !plot.dataHandler.isHierarchy ? plot.dataHandler.value : 
+          plot.dataHandler.getRange(...xScaleZoom.domain());
+        plotSel = linePlot(null, data, {
           color: plot.sel.attr('fill'),
           size: plot.sel.select('*').attr('r')
         });
       }
       else if (value === 'scatter') { //normal => scatter
-        plotSel = scatterPlot(null, {
-          data: plot.sel.datum(),
+        let data = !plot.dataHandler.isHierarchy ? plot.dataHandler.value :
+          plot.dataHandler.getRange(...xScaleZoom.domain());
+        plotSel = scatterPlot(null, data, {
           color: plot.sel.attr('stroke'),
           size: plot.sel.attr('stroke-width')
         });
       }
       else if (value === 'x-axis' || value === 'y-axis') {
-        plotSel = constantPlot(null, {
-          data: [plot.sel.datum().reverse()],
+        plotSel = constantPlot(null, [plot.sel.datum().reverse()], {
           color: plot.sel.attr('stroke'),
-          stroke: plot.sel.attr('stroke-width')
+          size: plot.sel.attr('stroke-width')
         });
       }
       else {throw new Error(`Invalid 'Type' property given: ${value}`);}
       plot.sel.node().replaceWith(plotSel.node());
-      plotArray[objId - 1] = {sel: plotSel, type: value};
+      Object.assign(plot, {sel: plotSel, type: value});
     }
     else if (name === 'Color') {
-      plot.sel.attr(plot.type === 'scatter' ? 'fill' : 'stroke', value);
+      if (plot.type === 'scatter') {
+        plot.sel.attr('fill', value);
+      }
+      else {
+        if (plot.sel.attr('fill') !== 'none') {plot.sel.attr('fill', value);}
+        plot.sel.attr('stroke', value);
+      }
     }
     else if (name === 'Size') {
       if (plot.type !== 'scatter') {plot.sel.attr('stroke-width', value);}
       else {plot.sel.selectAll('*').attr('r', value);}
     }
+    else if (name === 'Remove') {
+      plot.sel.remove();
+      plotArray.splice(objId - 1, 1);
+      if (!plotArray.length) {clear();}
+      else if (updateScaleDomain()) {replotAll();}
+      callParent('properties', {elem: node});
+    }
   }
   function updateScaleDomain(data) {
-    //TODO: quando eu uso o painel de propriedades pra mover uma constante
-    //pra fora do domínio e volto essa constante pra um valor menor, então
-    //o domínio nao é atualizado automaticamente.
-
-    //Updating scale domain given the new set of data
-    var dataExtentX, dataExtentY;
-    var domainX, domainY;
-    dataExtentX = d3.extent(data, d => d[0]);
-    dataExtentY = d3.extent(data, d => d[1]);
-    if (plotArray.length) {
-      //This if is to adjust the scale correctly in case the only plots
-      //created until now give a domain where its max and min values are
-      //the same. This can happen if a user plots a curve where all the
-      //values in an axis are the same, or more likely, plots a constant
-      //value (a line ploted via the constantPlot() function)
-      if (xDomainEmpty || yDomainEmpty) {
-        let plotData;
-        domainX = [Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY];
-        domainY = [Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY];
-        for (let plot of plotArray) {
-          if (plot.type === 'normal') {plotData = plot.sel.datum();}
-          else if (plot.type === 'scatter') {
-            plotData = plot.sel.selectAll('*').data();
-          }
-          else {plotData = plot.sel.data();}
-          const plotExtentX = d3.extent(plotData, d => d[0]);
-          const plotExtentY = d3.extent(plotData, d => d[1]);
-          updateDomains(domainX, domainY, plotExtentX, plotExtentY);
-        }
-
-      }
-      else {domainX = xScaleData.domain(); domainY = yScaleData.domain();}
+    let dataExtentX, dataExtentY;
+    let domainX = [Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY];
+    let domainY = [Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY];
+    let emptyArgument = true;
+    if (data) {
+      emptyArgument = false;
+      dataExtentX = d3.extent(data, d => d[0]);
+      dataExtentY = data[0][2] === undefined ? d3.extent(data, d => d[1]) :
+        [d3.extent(data, d => d[1])[0], d3.extent(data, d => d[2])[1]];
       updateDomains(domainX, domainY, dataExtentX, dataExtentY);
     }
-    else {domainX = dataExtentX; domainY = dataExtentY;}
-    if (xDomainEmpty = (domainX[0] === domainX[1])) {
-      domainX[0] -=0.5; domainX[1] +=0.5;
+    for (let plot of plotArray) {
+      if (plot.type === 'normal' || plot.type === 'scatter') {
+        data = plot.dataHandler.isHierarchy ? 
+          plot.dataHandler.getLastLevel().data :
+          plot.dataHandler.value;
+      }
+      else {data = plot.sel.data();}
+      if (!data[0]) {continue;}
+      dataExtentX = d3.extent(data, d => d[0]);
+      dataExtentY = data[0][2] === undefined ? d3.extent(data, d => d[1]) :
+        [d3.extent(data, d => d[1])[0], d3.extent(data, d => d[2])[1]];
+      updateDomains(domainX, domainY, dataExtentX, dataExtentY);
     }
-    if (yDomainEmpty = (domainY[0] === domainY[1])) {
-      domainY[0] -=0.5; domainY[1] +=0.5;
-    }
+    if (domainX[0] === domainX[1]) {domainX[0] -=0.5; domainX[1] +=0.5;}
+    if (domainY[0] === domainY[1]) {domainY[0] -=0.5; domainY[1] +=0.5;}
     
     var oldDomainX = xScaleData.domain(), oldDomainY = yScaleData.domain();
-    if (domainX[0] < oldDomainX[0] || oldDomainX[1] < domainX[1] ||
-        domainY[0] < oldDomainY[0] || oldDomainY[1] < domainY[1]
+    if (
+      emptyArgument || !plotArray.length ||
+      domainX[0] < oldDomainX[0] || oldDomainX[1] < domainX[1] ||
+      domainY[0] < oldDomainY[0] || oldDomainY[1] < domainY[1]
     ) {
-      xScaleData.domain(domainX); yScaleData.domain(domainY).nice();
+      xScaleData.domain(domainX ? domainX : [0, 1]);
+      yScaleData.domain(domainY ? domainY : [0, 1]).nice();
       const zoomT = d3.zoomTransform(svg.node());
       xScaleZoom.domain(zoomT.rescaleX(xScaleData).domain());
       yScaleZoom.domain(yScaleData.domain());
@@ -313,43 +351,49 @@ function Chart(id = 0, height = 150) {
     if (extentY[0] < domainY[0]) {domainY[0] = extentY[0];}
     if (extentY[1] > domainY[1]) {domainY[1] = extentY[1];}
   }
-  function linePlot(plotSel, options) {
-    if (!plotSel) {plotSel = d3.create('svg:path').attr('fill', 'none');}
-    if (options) {
-      if (options.data ) {plotSel.datum(options.data);}
-      if (options.color) {plotSel.attr('stroke', options.color)}
-      if (options.size ) {plotSel.attr('stroke-width', options.size);} 
+  function linePlot(plotSel, data, options) {
+    if (!plotSel) {
+      plotSel = d3.create('svg:path').attr('stroke-linejoin', 'round');
     }
-    plotSel.attr('d', line);
+    if (data) {plotSel.datum(data);}
+    if (options) {
+      plotSel.attr('stroke', options.color);
+      plotSel.attr('stroke-width', options.size);
+    }
+    //if a sample of data has 3 points, means that it's an area chart
+    if (plotSel.datum()[0][2]) {
+      plotSel.attr('d', area).attr('fill', plotSel.attr('stroke'));
+    }
+    else {plotSel.attr('d', line).attr('fill', 'none');}
     return plotSel;
   }
-  function scatterPlot(plotSel, options) {
+  function scatterPlot(plotSel, data, options) {
     if (!plotSel) {plotSel = d3.create('svg:g');}
+    if (data) {
+      plotSel.selectAll('*').data(data).join('svg:circle')
+        .attr('r', plotSel.select('*').attr('r'));
+    }
     if (options) {
-      if (options.data) {
-        plotSel.selectAll('*').data(options.data)
-          .enter().append('svg:circle');
-      }
       if (options.color) {plotSel.attr('fill', options.color);}
       if (options.size) {plotSel.selectAll('*').attr('r', options.size);}
     }
     plotSel.selectAll('*')
         .attr('cx', d => xScaleZoom(d[0]))
-        .attr('cy', d => yScaleZoom(d[1]))
+        .attr('cy', d => yScaleZoom(d[1]));
     return plotSel;
   }
-  function constantPlot(plotSel, options) {
+  function constantPlot(plotSel, data, options) {
     if (!plotSel) {plotSel = d3.create('svg:line');}
-    if (options) {
-      if (options.data) {
-        plotSel.data(options.data);
-        if (options.data[0][0] === null) {
-          plotSel.attr('x1', '0%').attr('x2', '100%');
-        }
-        else {plotSel.attr('y1', '0%').attr('y2', '100%');}
-      }
+    if (options) { 
       if (options.color) {plotSel.attr('stroke', options.color);}
       if (options.size) {plotSel.attr('stroke-width', options.size);}
+    }
+    if (data) {
+      plotSel.data(data);
+      if (data[0][0] === null) {
+        plotSel.attr('x1', '0%').attr('x2', '100%');
+      }
+      else {plotSel.attr('y1', '0%').attr('y2', '100%');}
     }
     if (plotSel.data()[0][0] === null) {
       plotSel
@@ -364,23 +408,10 @@ function Chart(id = 0, height = 150) {
     return plotSel;
   }
   function zoomed() {
-    //TODO: achar um jeito de fazer zooms independentes nos eixos x e y
     if (!d3.event.sourceEvent) {return;}
-    const scaledMargin = (d3.event.transform.k - 1) * margin.left;
-    if (d3.event.sourceEvent.type === 'wheel') { //Zoom
-      //Only adjust zoom scale without considering the translation
-      const tempx = d3.event.transform.x;
-      d3.event.transform.x = -scaledMargin;
-      xScaleZoom.domain(d3.event.transform.rescaleX(xScaleData).domain());
-      d3.event.transform.x = tempx;
-      replotAll();
-    }
-    //Applies translation separately from the xScaleZoom because then, on pan
-    //only events, there's no need to recalculate every single point on every
-    //curve, just needs to change the 'transform' attribute from gPlot 
-    gxAxis.call(xAxis.scale(d3.event.transform.rescaleX(xScaleData)));
-    const translate = `translate(${d3.event.transform.x + scaledMargin},0)`;
-    gPlot.attr('transform', translate);
+    xScaleZoom.domain(d3.event.transform.rescaleX(xScaleData).domain());
+    gxAxis.call(xAxis);
+    replotAll();
   }
   function handleResize({y}) {
     const y0 = y;
@@ -419,7 +450,11 @@ function Chart(id = 0, height = 150) {
 
     //Configuring d3 functions
     xAxis.scale(xScaleZoom); yAxis.scale(yScaleZoom);
-    line.x(d => xScaleZoom(d[0])).y(d => yScaleZoom(d[1]));
+    line.x(d => xScaleZoom(d[0]))
+        .y(d => yScaleZoom(d[1]));
+    area.x(d => xScaleZoom(d[0]))
+        .y0(d => yScaleZoom(d[1]))
+        .y1(d => yScaleZoom(d[2]));
     brushX.extent([[0, 0], [1, 1]]); gBrush.call(brushX);
     zoom.scaleExtent([1, Infinity]).on('zoom', zoomed);
     zoom.filter(() => !isEmpty && !d3.event.button && !d3.event.ctrlKey);

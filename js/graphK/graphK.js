@@ -14,7 +14,6 @@ const {RoutinePanel} = require('./Panels/routinePanel/routinePanel.js');
 const {TransformPanel} = require('./Panels/transformPanel/transformPanel.js');
 const {PropertiesPanel} = require('./Panels/propertiesPanel/propertiesPanel.js');
 const {PanelManager} = require('./PanelManager/panelManager.js');
-const panel = require('./PanelManager/panel.js');
 
 function GraphK() {
   //constants
@@ -43,6 +42,7 @@ function GraphK() {
   //Private Properties
   var callParent = defaultCallParent;
   var mouseOverElem = null;
+  var transferData;
 
   //Public Methods
   this.node = () => node;
@@ -150,7 +150,7 @@ function GraphK() {
     if (message === 'transform') {return selectTransform(details.x, details.y);}
     if (message === 'get-data') {return panels.transform.startDataSelect();}
     if (message === 'add-data') {
-      panels.transform.addToTree(details.data, true);
+      panels.transform.addToTree(details.dataHandler, false);
       return Promise.resolve(null);
     }
     if (message === 'select-range') {
@@ -162,6 +162,11 @@ function GraphK() {
     if (message === 'properties') {
       panels.properties.openProperties(details.pObjs);
       return Promise.resolve(null);
+    }
+    if (message === 'transferData') {
+      let temp = transferData;
+      transferData = details.transferData;
+      return Promise.resolve(temp);
     }
     return Promise.reject(new Error('Invalid message to parent'));
   }
@@ -214,9 +219,11 @@ function GraphK() {
             //we need to get the data using this path. First we parse the values of
             //the path back from the stringify operation made in the argsSelector.
             let path = JSON.parse(args[name]);
-            //Now we use the path to get the data. Since we are only interested in
-            //the (x,y) points of the curve, we just get the key 'value'.
-            args[name] = panels.transform.getDataFromPath(path).value;
+            //Now we use the path to get the data, we are only interested in
+            //the (x,y) points of the curve.
+            let dataHandler = panels.transform.getDataFromPath(path);
+            args[name] = dataHandler.isHierarchy ? 
+              dataHandler.getLevel(0).data : dataHandler.value;
           }
         }
         resolve({args: args});
@@ -240,9 +247,9 @@ function GraphK() {
       //PanelContainer[0]
       [
         //PanelHolder[0]
-        [panels.transform, panels.routine],
+        panels.transform,
         //PanelHolder[1]
-        panels.properties
+        [panels.properties, panels.routine]
       ],
       //PanelContainer[1]
       panels.chart

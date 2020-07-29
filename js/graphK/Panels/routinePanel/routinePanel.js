@@ -9,6 +9,7 @@ module.exports = {RoutinePanel};
 const {
   appendNewElement, selectDataInRange, defaultCallParent
 } = require('../../auxiliar/auxiliar.js');
+const {DataHandler} = require('../../auxiliar/dataHandler.js');
 const {Context} = require('../../auxiliar/context.js');
 const {Panel} = require('../../PanelManager/panel.js');
 
@@ -118,10 +119,11 @@ function RoutinePanel(modeObj) {
     let routine = routines[id];
     if (!routine.some((step) => step)) {return;}
     //calls parent to get data via mouse selection
-    callParent('get-data').then(({data, canceled}) => {
+    callParent('get-data').then(({dataHandler, canceled}) => {
       if (canceled) {return;}
-      let value = data.value;
-      let type = data.type;
+      let value = dataHandler.isHierarchy ?
+        dataHandler.getLevel(0).data : dataHandler.value;
+      let type = dataHandler.type;
       if (type !== 'normal') {throw TypeError(
         `Expected a set of data of type 'normal'`
       );}
@@ -131,9 +133,9 @@ function RoutinePanel(modeObj) {
         else if (step.range) {value = selectDataInRange(value, step.range);}
       }
       //calls parent to add new data to tree
-      return callParent('add-data', {data: {
+      return callParent('add-data', {dataHandler: new DataHandler({
         name: target.innerText, value, type
-      }});
+      })});
     });
   }
   function createStepAction(rStep) {

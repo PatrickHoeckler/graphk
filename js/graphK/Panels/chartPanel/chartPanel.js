@@ -5,6 +5,8 @@ module.exports = {ChartPanel};
 const {defaultCallParent} = require('../../auxiliar/auxiliar.js');
 const {Panel} = require('../../PanelManager/panel.js');
 const {Chart} = require('./chart.js');
+const chart = require('./chart.js');
+const { DataHandler } = require('../../auxiliar/dataHandler.js');
 const strokeColor = [
   //Color Code | Color name
   "#1e90ff",  //DodgerBlue
@@ -49,6 +51,13 @@ function ChartPanel(modeObj) {
   this.resize = () => chartArray.forEach(c => c.reScale());
 
   //Private Functions
+  function respondChild(message, details = {}) {
+    if (message === 'properties') {
+      if (selectedElems.length === 1 && selectedElems[0] === details.elem) {
+        sendPropertiesOfSelected();
+      }
+    }
+  }
   function addHighlight({target}) {
     if (mouseOverElem) {return;}
     if (!(mouseOverElem = getChartContainer(target))) {return;}
@@ -62,6 +71,7 @@ function ChartPanel(modeObj) {
   function addChart() {
     let newChart = new Chart(chartArray.length);
     newChart.appendTo(pContents);
+    newChart.onCallParent(respondChild);
     chartArray.push(newChart);
     if (toolbarLevel === 0) {updateToolbarButtons(1);}
   }
@@ -213,12 +223,13 @@ function ChartPanel(modeObj) {
       let chart = chartArray[findChartIndex(e.target)];
       if (!chart) {return;}
       if (e.ctrlKey) {chart.clear();}
-      let {type, value} = JSON.parse(e.dataTransfer.getData('text'));
-      chart.plot(value, strokeColor[nextColor], type);
-      nextColor = (nextColor + 1) % strokeColor.length;
-      if (selectedElems.length === 1 && selectedElems[0] === chart.node()) {
-        sendPropertiesOfSelected();
-      }
+      callParent('transferData').then(transferData => {
+        chart.plot(transferData, strokeColor[nextColor]);
+        nextColor = (nextColor + 1) % strokeColor.length;
+        if (selectedElems.length === 1 && selectedElems[0] === chart.node()) {
+          sendPropertiesOfSelected();
+        }
+      });
     });
     pContents.addEventListener('dragover', event => {
       addHighlight(event);
@@ -250,9 +261,9 @@ function ChartPanel(modeObj) {
         if (item === 'select') {
           const {brushed} = getDataFromBrush(target);
           for (let i = 0, n = brushed.length; i < n; i++) {
-            callParent('add-data', {data: {
-              name: `Selection ${i + 1}`, value: brushed[i]
-            }});
+            callParent('add-data', {dataHandler: new DataHandler({
+              name: `Selection ${i + 1}`, value: brushed[i], type: 'normal'
+            })});
           }
         }
         else if (item === 'capture') {

@@ -5,7 +5,7 @@ const {appendNewElement, defaultCallParent} = require('../../auxiliar/auxiliar.j
 const {NavTree} = require('../../auxiliar/navTree.js');
 const {Panel} = require('../../PanelManager/panel.js');
 const {FileManager} = require('./fileManager.js');
-const { tree } = require('d3');
+const { DataHandler } = require('../../auxiliar/dataHandler.js');
 
 function TransformPanel(modeObj) {
   if (modeObj === null || typeof(modeObj) !== 'object') {throw new Error(
@@ -57,9 +57,9 @@ function TransformPanel(modeObj) {
       );};
       if (treeElem === null) {return resolve({canceled: true});}
       let path = navTree.findPath(treeElem);
-      let data = fileManager.getDataFromPath(path);
+      let dataHandler = fileManager.getDataFromPath(path);
       treeElem.classList.remove('highlight');
-      resolve({data, path, canceled: false});
+      resolve({dataHandler, path, canceled: false});
     }
   });
   this.stopDataSelect = () => selectTreeElem(null);
@@ -73,10 +73,12 @@ function TransformPanel(modeObj) {
     let files = fileManager.getDataFromPath();
     //Step 1 - Recreate the file tree with new transforms
     navTree.clear();
-    for (let data of files) {
-      let folderDiv = navTree.addFolder({name: data.name, value: newTransforms.value});
-      if (!data.value) {folderDiv.classList.add('empty');}
-      else if (data.type !== 'no-plot') {folderDiv.draggable = true;}
+    for (let dataHandler of files) {
+      let folderDiv = navTree.addFolder({
+        name: dataHandler.name, value: newTransforms.value
+      });
+      if (!dataHandler.value) {folderDiv.classList.add('empty');}
+      else if (dataHandler.type !== 'no-plot') {folderDiv.draggable = true;}
     }
 
     //Step 2 - Change the tree elements which correspond to an already calculated
@@ -113,19 +115,25 @@ function TransformPanel(modeObj) {
     }
   }
   function saveFile(treeElem) {
-    let data = fileManager.getDataFromPath(navTree.findPath(treeElem), true);
-    if (!data.value) {return false;}
-    callParent('save-file', {data});
-  }
-  function addToTree(data, openRenameBox = false) {
-    if (typeof(data.name) !== 'string' || !filenameFormat.test(data.name)) {
-      throw new TypeError(`The 'name' key of the 'data' object is invalid`);
+    let dataHandler = fileManager.getDataFromPath(navTree.findPath(treeElem));
+    if (dataHandler instanceof DataHandler) {
+      callParent('save-file', {data: {
+          name: dataHandler.name, type: dataHandler.type,
+          value: dataHandler.isHierarchy ?
+            dataHandler.getLevel(0).data : dataHandler.value
+        }
+      });
     }
-    fileManager.addFile(data);
+  }
+  function addToTree(dataHandler, openRenameBox = false) {
+    if (typeof(dataHandler.name) !== 'string' || !filenameFormat.test(dataHandler.name)) {
+      throw new TypeError(`The 'name' key of the 'dataHandler' object is invalid`);
+    }
+    fileManager.addFile(dataHandler);
     let transforms = fileManager.getTransformFromPath();
-    let folderDiv = navTree.addFolder({name: data.name, value: transforms.value});
-    if (!data.value) {folderDiv.classList.add('empty');}
-    else if (data.type !== 'no-plot') {folderDiv.draggable = true;}
+    let folderDiv = navTree.addFolder({name: dataHandler.name, value: transforms.value});
+    if (!dataHandler.value) {folderDiv.classList.add('empty');}
+    else if (dataHandler.type !== 'no-plot') {folderDiv.draggable = true;}
     if (openRenameBox) {renameFile(folderDiv);}
   }
   //  Rename navTree file
@@ -236,28 +244,28 @@ function TransformPanel(modeObj) {
   }
   function getElemProperties(treeElem) {
     const path = navTree.findPath(treeElem);
-    let data = fileManager.getDataFromPath(path);
-    if (data.type === 'dir') {return [];}
-    const typeProp = path.length !== 1 || data.type === 'no-plot' ? {
-      name: 'Type', value: data.type, type: 'text', disabled: true
+    let dataHandler = fileManager.getDataFromPath(path);
+    if (!(dataHandler instanceof DataHandler)) {return [];}
+    const typeProp = path.length !== 1 || dataHandler.type === 'no-plot' ? {
+      name: 'Type', value: dataHandler.type, type: 'text', disabled: true
     } : {
-      name: 'Type', value: data.type, type: 'select',
+      name: 'Type', value: dataHandler.type, type: 'select',
       option: ['normal', 'scatter']
     }
     return [
-      {name: 'Name', value: data.name, disabled: path.length !== 1}, typeProp
+      {name: 'Name', value: dataHandler.name, disabled: path.length !== 1}, typeProp
     ]
   }
   function propertyChanged({name, value}) {
-    let data = fileManager.getDataFromPath(navTree.findPath(selectedElems[0]));
+    let dataHandler = fileManager.getDataFromPath(navTree.findPath(selectedElems[0]));
     if (name === 'Name') {
       let textElem = selectedElems[0].getElementsByClassName('node-name')[0];
       if (value === textElem.innerText) {return;}
-      if (!filenameFormat.test(value)) {return {replace: data.name};}
-      textElem.innerHTML = data.name = value;
+      if (!filenameFormat.test(value)) {return {replace: dataHandler.name};}
+      textElem.innerHTML = dataHandler.name = value;
       return {rename: value};
     }
-    else if (name === 'Type') {data.type = value;}
+    else if (name === 'Type') {dataHandler.type = value;}
   }
   function sendPropertiesOfSelected() {
     if (selectedElems.length > 1) {
@@ -291,15 +299,16 @@ function TransformPanel(modeObj) {
   }
   function executeToolbarAction(buttonId, targetElems) { return function execute()
   {
+    window.removeEventListener('mouseup', execute);
     if (buttonId === 0) { //If clicked on new/copy file
       if (targetElems.length) {
         let openRenameBox = targetElems.length === 1;
         for (let target of targetElems) {
-          let data = fileManager.getDataFromPath(navTree.findPath(target));
-          addToTree(data, openRenameBox);
+          let dataHandler = fileManager.getDataFromPath(navTree.findPath(target));
+          addToTree(new DataHandler(dataHandler), openRenameBox);
         }
       }
-      else {addToTree({name: 'empty'}, true);}
+      else {addToTree(new DataHandler({name: 'empty'}), true);}
     }
     else if (buttonId === 1) { //If clicked on load file
       callParent('load-file').then(({canceled, filePaths}) => {
@@ -310,6 +319,7 @@ function TransformPanel(modeObj) {
       for (let target of targetElems) {saveFile(target);}
     }
     else if (buttonId === 3) { //If clicked on remove file
+      if (!targetElems.length) {return;}
       while (targetElems.length) {
         let target = targetElems.pop();
         //must make this check to avoid removing an element that was contained
@@ -320,7 +330,6 @@ function TransformPanel(modeObj) {
     }
     //If clicked on configure transforms
     else if (buttonId === 4) {callParent('configure-transforms');}
-    window.removeEventListener('mouseup', execute);
   }}
   function updateSelectedElems(elem, addToSelection) {
     elem = navTree.getContainingElement(elem);
@@ -416,14 +425,9 @@ function TransformPanel(modeObj) {
         if (!item) {return;}
         if (item === 'rename') {renameFile(elem);}
         else if (item === 'remove') {deleteFromTree(elem);}
-        else {
-          let data = fileManager.getDataFromPath(navTree.findPath(elem));
-          if (item === 'copy') {addToTree(data, true);}
-          if (item === 'save') {
-            callParent('save-file', {data: {
-              name: data.name, value: data.value,
-            }});
-          }
+        else if (item === 'save') {saveFile(elem);}
+        else { //item === 'copy'
+          addToTree(fileManager.getDataFromPath(navTree.findPath(elem)), true);
         }
       });
     });
@@ -474,14 +478,15 @@ function TransformPanel(modeObj) {
         if (!elem.classList.contains('leaf')) {return;}
         fileManager.calculateTransform(navTree.findPath(elem),
           (argsFormat) => callParent('arguments', {argsFormat})
-        ).then((transform) => {
-          if (!transform.value) {return;}
-          if (typeof(transform.value) === 'number') {
-            elem.title = !transform.tooltip ? 'Value calculated: ' + transform.value :
-              transform.tooltip + '\nValue calculated: ' + transform.value;
+        ).then(({transform, dataHandler}) => {
+          if (!transform) {return;}
+          if (typeof(dataHandler.value) === 'number') {
+            elem.title = !transform.tooltip ?
+              'Value calculated: ' + dataHandler.value :
+              transform.tooltip + '\nValue calculated: ' + dataHandler.value;
           }
           elem.classList.add('ready');
-          if (transform.type !== 'no-plot') {elem.draggable = true;}
+          if (dataHandler.type !== 'no-plot') {elem.draggable = true;}
         }).catch((err) => {
           elem.setAttribute('title', 'O código dessa transformação resultou em erro.\n' +
           'Cheque o console pressionando F12 para mais detalhes.');
@@ -500,29 +505,24 @@ function TransformPanel(modeObj) {
       let dragElem = event.target;
       navTree.node().classList.add('drag');
       dragElem.classList.remove('highlight');
-      let data = fileManager.getDataFromPath(navTree.findPath(dragElem));
-      event.dataTransfer.setData('text', JSON.stringify({
-        name: data.name,
-        type: data.type,
-        value: data.value
-      }));
+      let dataHandler = fileManager.getDataFromPath(navTree.findPath(dragElem));
+      callParent('transferData', {transferData: dataHandler});
 
       function drop(event) {
+        callParent('transferData'); //resets transferData
         let elem = navTree.getContainingElement(event.target);
         if (!elem) return;
         event.preventDefault();
         let fileId = navTree.findPath(elem)[0];
         fileManager.resetFileStructure(fileId);
+        let shallowClone = new DataHandler(dataHandler);
+        shallowClone.name = elem.innerText;
+        fileManager.setFileData(fileId, shallowClone);
         if (elem.classList.contains('empty')) {
-          fileManager.setFileData(fileId, data);
-          let textElem = elem.getElementsByClassName('node-name')[0];
-          textElem.innerHTML = data.name;
-          elem.draggable = true;
+          if (shallowClone.type !== 'no-plot') {elem.draggable = true;}
           elem.classList.remove('empty');
         }
         else {
-          data.name = undefined; //to not change file name in setFileData
-          fileManager.setFileData(fileId, data);
           let leafs = elem.parentElement.getElementsByClassName('leaf');
           for (let leaf of leafs) {leaf.className = 'leaf';}
         }

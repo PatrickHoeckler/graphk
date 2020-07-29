@@ -99,10 +99,10 @@ function ArgsSelector(argsFormat, parent, title = 'Select Arguments') {
         argInput.innerHTML = 'Select File';
         argInput.addEventListener('click', ({currentTarget}) => {
           argWindow.hide();
-          callParent('get-data').then(({data, path, canceled}) => {
+          callParent('get-data').then(({dataHandler, path, canceled}) => {
             argWindow.show();
             if (canceled) {return;}
-            currentTarget.innerHTML = data.name;
+            currentTarget.innerHTML = dataHandler.name;
             //path is given as an array. The window that takes the arguments only accepts
             //values as string, so we stringify the array. Later we parse the values back
             currentTarget.value = JSON.stringify(path);

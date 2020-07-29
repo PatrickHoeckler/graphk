@@ -137,6 +137,7 @@ function PanelManager(...panels) {
       window.removeEventListener('mousemove', move);
       window.removeEventListener('mouseup', stop);
       document.body.style.cursor = oldCursor;
+      node.dispatchEvent(new Event('resize', {bubbles: true}));
     }
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', stop);

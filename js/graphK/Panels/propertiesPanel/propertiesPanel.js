@@ -49,8 +49,7 @@ function PropertiesPanel() {
   //      The value key will start the current selected option, if the value is
   //      not valid, the first item will be selected.
   //      -- 'color': a color property, will open a selector to choose any color
-  //      -- 'button': a simple button that fires the onInput and onChange
-  //      events when clicked.
+  //      -- 'button': a simple button that fires the onInput event when clicked.
   //   - min (number): the minimum value for the range type of property
   //   - max (number): the maximum value for the range type of property
   //   - step (number): the intervals of the 'range' type of property
@@ -84,7 +83,8 @@ function PropertiesPanel() {
         //  - replace (string): If given, will cancel the change and replace
         //  the value with this replace value.
         const response = onChange({
-          name: target.previousSibling.innerText, value: target.value,
+          name: target.parentElement.children[0].innerText,
+          value: target.value,
           objId: Array.prototype.indexOf
             .call(currentTarget.parentElement.children, currentTarget)
         });
@@ -104,7 +104,8 @@ function PropertiesPanel() {
     if (onInput) {
       objElem.addEventListener('input', ({target, currentTarget}) => {
         onInput({
-          name: target.previousSibling.innerText, value: target.value,
+          name: target.parentElement.children[0].innerText,
+          value: target.value,
           objId: Array.prototype.indexOf
             .call(currentTarget.parentElement.children, currentTarget)
         });
@@ -163,10 +164,13 @@ function PropertiesPanel() {
     else if (p.type === 'button') {
       prValueElem = appendNewElement(prContainer, 'button', 'property-value');
       prValueElem.setAttribute('type', 'button');
-      prValueElem.innerHTML = p.value;
+      if (!p.value) {
+        prValueElem.innerHTML = p.name;
+        prNameElem.remove();
+      }
+      else {prValueElem.innerHTML = p.value}
       prValueElem.addEventListener('click', ({target}) => {
         target.dispatchEvent(new Event('input', {bubbles: true}));
-        target.dispatchEvent(new Event('change', {bubbles: true}));
       });
     }
     else { //type === 'number' or defaults to type === 'text'
