@@ -29,8 +29,10 @@ function Chart(id = 0, height = 150) {
   const plotArray = [];
   const line = d3.line();
   const area = d3.area();
-  const zoom = d3.zoom();
   const brushX = d3.brushX();
+  const zoomX  = d3.zoom();
+  const zoomY  = d3.zoom();
+
 
   //Private Properties
   var isEmpty;
@@ -60,7 +62,7 @@ function Chart(id = 0, height = 150) {
   }
   this.setBrush = (enable) => {
     gBrush.selectAll('*').style('cursor', enable ? null : 'unset');
-    if (enable) {brushX.filter(zoom.filter());}
+    if (enable) {brushX.filter(() => !isEmpty && !d3.event.button);}
     else {
       gBrush.call(brushX.clear);
       brushX.filter(() => false);
@@ -77,11 +79,7 @@ function Chart(id = 0, height = 150) {
     });
   }
   this.getDataFromBrush = () => {
-    //can't call xScaleZoom.invert because this scale does not consider
-    //the translation part of the zoom. Must create a new tempScale based
-    //on the current zoomTransform being aplied
-    const tempScale = d3.zoomTransform(svg.node()).rescaleX(xScaleData);
-    const [x0, x1] = d3.brushSelection(gBrush.node()).map(tempScale.invert);
+    const [x0, x1] = d3.brushSelection(gBrush.node()).map(xScaleZoom.invert);
     const out = {interval: [x0, x1], brushed: []};
     for (let {dataHandler} of plotArray) {
       if (dataHandler.type !== 'normal' && dataHandler.type !== 'scatter') {return;}
@@ -199,7 +197,8 @@ function Chart(id = 0, height = 150) {
   function clear() {
     plotArray.length = 0;
     updateScaleDomain();
-    zoom.transform(svg, d3.zoomIdentity);
+    zoomX.transform(svg, d3.zoomIdentity);
+    zoomY.transform(gBrush, d3.zoomIdentity);
     gxAxis.selectAll('*').remove(); gyAxis.selectAll('*').remove();
     gPlot.selectAll('*').remove();
     gPlot.attr('transform', null);
@@ -243,7 +242,8 @@ function Chart(id = 0, height = 150) {
     clipRect
       .attr('width', extent[1][0] - extent[0][0])
       .attr('height', extent[1][1] - extent[0][1]);
-    zoom.extent(extent).translateExtent(extent);
+    zoomX.extent(extent).translateExtent(extent);
+    zoomY.extent(extent).translateExtent(extent);
     brushX.extent(extent); gBrush.call(brushX);
     gBrush.call(brushX.move, d3.brushSelection(gBrush.node()));
 
@@ -338,9 +338,10 @@ function Chart(id = 0, height = 150) {
     ) {
       xScaleData.domain(domainX ? domainX : [0, 1]);
       yScaleData.domain(domainY ? domainY : [0, 1]).nice();
-      const zoomT = d3.zoomTransform(svg.node());
-      xScaleZoom.domain(zoomT.rescaleX(xScaleData).domain());
-      yScaleZoom.domain(yScaleData.domain());
+      const zoomTx = d3.zoomTransform(svg.node());
+      const zoomTy = d3.zoomTransform(gBrush.node());
+      xScaleZoom.domain(zoomTx.rescaleX(xScaleData).domain());
+      yScaleZoom.domain(zoomTy.rescaleX(yScaleData).domain());
       return true;
     }
     return false;
@@ -409,8 +410,14 @@ function Chart(id = 0, height = 150) {
   }
   function zoomed() {
     if (!d3.event.sourceEvent) {return;}
-    xScaleZoom.domain(d3.event.transform.rescaleX(xScaleData).domain());
-    gxAxis.call(xAxis);
+    if (d3.event.sourceEvent.ctrlKey) {
+      yScaleZoom.domain(d3.event.transform.rescaleY(yScaleData).domain());
+      gyAxis.call(yAxis);
+    }
+    else {
+      xScaleZoom.domain(d3.event.transform.rescaleX(xScaleData).domain());
+      gxAxis.call(xAxis);
+    }
     replotAll();
   }
   function handleResize({y}) {
@@ -456,10 +463,18 @@ function Chart(id = 0, height = 150) {
         .y0(d => yScaleZoom(d[1]))
         .y1(d => yScaleZoom(d[2]));
     brushX.extent([[0, 0], [1, 1]]); gBrush.call(brushX);
-    zoom.scaleExtent([1, Infinity]).on('zoom', zoomed);
-    zoom.filter(() => !isEmpty && !d3.event.button && !d3.event.ctrlKey);
-    brushX.filter(zoom.filter());
-    svg.call(zoom);
+    brushX.filter(() => !isEmpty && !d3.event.button);
+
+    zoomX.scaleExtent([1, Infinity]).on('zoom', zoomed);
+    zoomX.filter(() => !isEmpty && !d3.event.button && !d3.event.ctrlKey);
+    zoomY.scaleExtent([0.1, Infinity]).on('zoom', zoomed);
+    zoomY.filter(() => !isEmpty && !d3.event.button &&  d3.event.ctrlKey);
+    //We can't call two zoom functions on the same element, so we must call one
+    //for the svg and other for the gBrush. The gBrush is a good choice because
+    //it is the only element that receives pointer events. So to the user, zooming
+    //in either direction is the same
+    svg.call(zoomX);
+    gBrush.call(zoomY);
     this.reindex(id);
     this.setBrush(false);
   }).call(this);
