@@ -2,9 +2,12 @@
 .graphK {
   color: var(--font-color);
   font-family: var(--font-family);
+  background-color: var(--main-bg-color);
+  box-sizing: border-box;
   position: relative;
   overflow: hidden;
   user-select: none;
+  padding: 2px;
   width: 100%; height: 100%;
 }
 .graphK .bold {font-weight: bold;}
@@ -24,6 +27,9 @@
   stroke: crimson;
 }
 
+.row-container {display: flex; flex-direction: row;}
+.column-container {display: flex; flex-direction: column;}
+
 /**** modes of operation ****/
 .graphK        {--highlight-color: var(--highlight-normal);}
 .graphK.delete {--highlight-color: var(--highlight-delete);}
@@ -31,20 +37,27 @@
 .graphK.drag   {--highlight-color: var(--highlight-drag);}
 /****************************/
 
-.graphK .button-wrapper>button {
-  background-color: whitesmoke;
-  border: 1px outset lightgray;
-  margin: 0px 4px;
-  font-size: small;
+.graphK .button-wrapper {
+  display: flex;
+  overflow: hidden;
+  background-color: var(--panel-frame-color);
+  min-height: fit-content;
 }
-.graphK .button-wrapper>button:hover {border-style: inset;}
+.graphK .button-wrapper>button {
+  font-size: small;
+  padding: 4px 8px;
+  background-color: transparent;
+  color: inherit;
+  border: none;
+  min-width: fit-content;
+}
+.graphK .button-wrapper>button:hover {background-color: rgba(255, 255, 255, 0.05);}
+.graphK .button-wrapper>button:focus {outline: none;}
 
 /*Transform Selector*/
 .graphK .transform-selector {
   display: flex; flex-direction: column;
-  box-sizing: border-box;
   width: 100%; height: 100%;
-  padding: 4px;
 }
 .transform-selector .checkbox {
   display: flex; box-sizing: border-box;
@@ -65,13 +78,6 @@
   border-style: groove;
   flex-grow: 1;
   overflow: auto;
-  padding-left: 6px;
-}
-.transform-selector>.button-wrapper {
-  display: flex;
-  margin-top: 6px;
-  margin-bottom: 2px;
-  align-self: flex-end;
 }
 
 /*Arguments Selector*/
@@ -79,22 +85,17 @@
   box-sizing: border-box;
   flex-direction: column;
   display: flex;
-  padding: 10px;
   height: 100%; width: 100%;
 }
 .graphK .args-selector>.args-box {
   border-color: var(--window-frame-color);
-  border-width: 2px;
-  border-style: groove;
+  border-width: 2px; border-style: groove;
+  display: flex; flex-direction: column;
   flex-grow: 1;
-  display: flex;
-  flex-direction: column;
+  margin: 6px;
   justify-content: center;
   box-sizing: border-box;
   overflow-y: scroll;
-}
-.graphK .args-selector>.button-wrapper {
-  padding-top: 10px; align-self: flex-end;
 }
 .arg-wrapper {
   box-sizing: border-box;

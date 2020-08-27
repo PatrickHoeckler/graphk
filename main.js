@@ -14,6 +14,13 @@ const path = require('path');
 const fs = require('fs');
 const {app, BrowserWindow, Menu, dialog, ipcMain} = electron;
 
+const filterDict = {
+  'json': {name: 'Javascript Object Notation (.json)', extensions: ['json']},
+  'png':  {name: 'Portable Network Graphics (.png)'  , extensions: ['png']},
+  'csv':  {name: 'Comma separeted values (.csv)'     , extensions: ['csv']},
+  'txt':  {name: 'Text file (.txt)'                  , extensions: ['txt']},
+  'any':  {name: 'All Files (*.*)'                   , extensions: ['*']}
+}
 //Platform specific
 //************ ADICIONAR SUPORTE AO MAC NO FUTURO *****************
 //const isMac = process.platform === 'darwin';
@@ -56,10 +63,7 @@ function loadFile() {
   //Select Files
   let fileNames = dialog.showOpenDialogSync(mainWindow, {
     properties: ['openFile', 'multiSelections'],
-    filters: [
-      { name: 'Comma separeted values (.csv)', extensions: ['csv'] },
-      { name: 'All Files (*.*)', extensions: ['*'] }
-    ]
+    filters: [filterDict['csv'], filterDict['any']]
   })
   //Send File Names to ipcRenderer
   //  if no files selected
@@ -139,10 +143,7 @@ ipcMain.handle('transformations:names', (event) => {
 
 ipcMain.handle('capture:image', (event, rect) => {
   let fileName = dialog.showSaveDialogSync(mainWindow, {
-    defaultPath: 'capture',
-    filters: [
-      {name: 'Portable Network Graphics (*.png)', extensions: ['png']}
-    ]
+    defaultPath: 'capture', filters: [filterDict['png']]
   });
   if (fileName === undefined) {return false};
 
@@ -164,10 +165,7 @@ ipcMain.handle('capture:image', (event, rect) => {
 ipcMain.handle('save:file', (event, data) => {
   let fileName = dialog.showSaveDialogSync(mainWindow, {
     defaultPath: data.name,
-    filters: [
-      {name: 'Javascript Object Notation (.json)', extensions: ['json']},
-      {name: 'Comma separeted values (.csv)', extensions: ['csv']},
-    ]
+    filters: [filterDict['csv'], filterDict['json']]
   });
   if (fileName === undefined) {return false};
   fs.open(fileName, 'w', (err, file) => {
@@ -192,11 +190,29 @@ ipcMain.handle('save:file', (event, data) => {
   });
 });
 
-ipcMain.handle('load:file', () => dialog.showOpenDialog(mainWindow, {
-  properties: ['openFile', 'multiSelections'],
-  filters: [
-    { name: 'Javascript Object Notation (.json)', extensions: ['json'] },
-    { name: 'Comma separeted values (.csv)', extensions: ['csv'] },
-    { name: 'All Files (*.*)', extensions: ['*'] }
-  ]
-}));
+ipcMain.handle('save:string', (event, data, filterKeys) => {
+  let fileName = dialog.showSaveDialogSync(mainWindow, {
+    defaultPath: data.name,
+    filters: !filterKeys ? [filterDict['txt']] :
+      filterKeys.map(key => filterDict[key])
+  });
+  if (fileName === undefined) {return false};
+  fs.open(fileName, 'w', (err, file) => {
+    if (err) {
+      return dialog.showErrorBox('Erro abrindo arquivo', err.prototype.message);
+    }
+    fs.write(file, data.string, (err) => {
+      fs.close(file, () => {return;});
+      if (!err) {return;}
+      dialog.showErrorBox('Erro escrevendo no arquivo', err.prototype.message);
+    });
+  });
+});
+
+ipcMain.handle('load:file', (event, filterKeys) => {
+  return dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile', 'multiSelections'],
+    filters: !filterKeys ? [filterDict['any']] :
+        filterKeys.map(key => filterDict[key])
+  });
+});

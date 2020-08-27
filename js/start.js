@@ -30,17 +30,18 @@ var graphK;
 
 //Needs to wait for the preload to load the necessary modules
 let id = setInterval(function() {
-  if (!preloadedModules) {return;}
+  if (!preloaded) {return;}
   clearInterval(id);
   startProgram();
 }, 10);
 
 function startProgram() {
   const {
-    GraphK, Mode, path,
-    loadFile, saveFile, getTransformsFiles, onFileAdd, onPanelMenuClick, captureImage
-  } = preloadedModules;
-  preloadedModules = null;
+    GraphK, Mode, path, loadFile, saveFile, saveString,
+    getTransformsFiles, onFileAdd, onPanelMenuClick,
+    captureImage, calcSHA256
+  } = preloaded;
+  preloaded = null;
 
   graphK = new GraphK();
   graphK.appendTo(document.body);
@@ -51,8 +52,11 @@ function startProgram() {
   );
 
   graphK.onCallParent(function (message, details) {
-    if (message === 'load-file') {return loadFile();}
+    if (message === 'load-file') {return loadFile(details.filters);}
     if (message === 'save-file') {return saveFile(details.data);}
+    if (message === 'save-json') {return saveString(
+      {name: details.name, string: details.json}, ['json']
+    );}
     if (message === 'capture') {
       captureImage(details.target.getBoundingClientRect());
       return Promise.resolve(null);
@@ -85,6 +89,7 @@ function startProgram() {
 
   function loadTransforms(tfFiles) { return new Promise(resolve => {
     let transforms = {name: '.', value: []};
+    let loadFail = false;
     (function loadDir(transfFolder, folderPath, saveTo) {
       let importPromises = [];
       for (let i = 0; i < transfFolder.length; i++) {
@@ -98,13 +103,15 @@ function startProgram() {
         }
         else { //if the element corresponds to a file
           let transformPath = '.\\' + path.join(folderPath, transfFolder[i].name);
+          let sha256 = calcSHA256(transformPath);
+          if (!sha256) {loadFail = true; continue;}
           transformPath = transformPath.replace(/\\/g, '/');
           let impPromise = import(transformPath);
           impPromise.then(module => {
             if (Array.isArray(module.pkg)) {
               let pkgName = module.pkgName ? module.pkgName : path.parse(transformPath).name;
               let newFolder = [];
-              saveTo.push({name: pkgName, value: newFolder, type: 'pkg'});
+              saveTo.push({name: pkgName, value: newFolder, type: 'pkg', hash: sha256});
               for (let tf of module.pkg) {newFolder.push(tf);}
             }
             else {
@@ -112,6 +119,7 @@ function startProgram() {
               //can be altered
               const tf = {};
               for (let key in module) {tf[key] = module[key];}
+              tf.hash = sha256;
               saveTo.push(tf);
             }
           });
@@ -120,7 +128,10 @@ function startProgram() {
       }
       return Promise.all(importPromises);
     })(tfFiles.value, '../transformations', transforms.value)
-    .then(() => resolve(transforms));
+    .then(() => {
+      if (loadFail) {alert('Error opening some files');}
+      resolve(transforms)
+    });
   });}
 }
 

@@ -15,6 +15,7 @@ function Window(options = {}) {
   var closeCallback;
 
   //Public Methods
+  this.contentNode = () => wContent;
   this.appendContent = (elem) => wContent.appendChild(elem);
   this.clearContents = () => wContent.innerHTML = '';
   this.show = () => wNode.style.display = '';
@@ -163,4 +164,13 @@ function Window(options = {}) {
     wTop = wLeft = wWidth = wHeight = null;
     this.recreate(options);
   }).call(this);
+}
+
+Window.createFullWindow = function(title) {
+  let wNode = appendNewElement(null, 'div', 'window window-full');
+  let wContainer = appendNewElement(wNode, 'div', 'window-container');
+  let frameElem = appendNewElement(wContainer, 'div', 'window-frame');
+  appendNewElement(frameElem, 'span', 'window-title').innerHTML = title;
+  let wContents = appendNewElement(wContainer, 'div', 'window-contents');
+  return {wNode, wContents};
 }

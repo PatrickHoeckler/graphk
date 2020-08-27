@@ -1,7 +1,7 @@
 "use strict";
 
 export const name = 'Filter';
-export const func = function(data, {coefficients, n, method}) {
+export const func = function({data, coefficients, n, method}) {
   if (!Array.isArray(coefficients)) {return null;}
   //Part 1: adjust the coefficients so that a and b are both arrays of same length
   let [b, a] = coefficients;
@@ -30,7 +30,6 @@ export const func = function(data, {coefficients, n, method}) {
   //for more information:
   //  https://www.mathworks.com/help/matlab/ref/filter.html
   //  http://matlab.izmiran.ru/help/techdoc/ref/filter.html
-  if (!n) {n = 1;} //defaults number of iterations as 1 if none given
   const _2way = method === '2-way'; //if normal or 2-way method is used
   let input = data; //array containing the values of
   let out = []; //output array
@@ -67,14 +66,15 @@ export const tooltip = `Aplica um filtro com função de transferência dado pel
 'É implementado da forma direct form II transposed, similar a função filter no MATLAB';
 export const args = [
   {
-    name: 'coefficients',
-    type: 'data',
+    name: 'coefficients', type: 'data',
     tooltip: 'Vetor dos coeficientes do numerador e denominador da função de transferência'
   },
-  {name: 'n' , type: 'number', optional: true, tooltip: 'Número de vezes que o filtro será aplicado. Valor padrão: 1'},
   {
-    name: 'method',
-    type: 'select',
+    name: 'n' , type: 'number', min: 1, value: 1, step: 1,
+    tooltip: 'Número de vezes que o filtro será aplicado.'
+  },
+  {
+    name: 'method', type: 'select',
     option: [
       {name: 'normal', tooltip: 'Filtro convencional. Aplica a função transferência no conjunto de entrada'},
       {name: '2-way', tooltip: 'Aplica a função transferência, inverte o resultado, aplica novamente e inverte o resultado'}

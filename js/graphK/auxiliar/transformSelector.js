@@ -1,9 +1,5 @@
 "use strict";
 
-//    COISAS PARA AJUSTAR NO FUTURO
-//
-//
-
 module.exports = {TransformSelector};
 
 const {NavTree} = require('./navTree.js');
@@ -33,9 +29,9 @@ function TransformSelector() {
     transforms = _transforms;
     navTree.clear();
     checkedElems = [];
-    for (let f of _transforms.value) {navTree.addFolder(f);}
-    let folders = navTree.node().getElementsByClassName('folder');
-    let leafs = navTree.node().getElementsByClassName('leaf');
+    for (let f of _transforms.value) {navTree.addToTree(f);}
+    let folders = navTree.node().getElementsByClassName('folder-node');
+    let leafs = navTree.node().getElementsByClassName('leaf-node');
     for (let node of folders) {
       let checkbox = appendNewElement(null, 'span', 'checkbox checked');
       node.insertBefore(checkbox, node.children[0]);
@@ -57,7 +53,7 @@ function TransformSelector() {
       for (let i = 0; i < folder.children.length; i++) {
         let elem = folder.children[i];
         //if elem corresponds to a container (folder/pkg) of transformations
-        if (elem.classList.contains('collapsible')) {
+        if (elem.classList.contains('folder')) {
           let [folderDiv, contents] = elem.children;
           let checkbox = folderDiv.children[0];
           if (checkbox.classList.contains('checked')) {
@@ -115,7 +111,7 @@ function TransformSelector() {
       let hasChecked = false;
       if (!elem) {return;}
       //if clicked on a leaf or its checkbox
-      if (elem.classList.contains('leaf')) {
+      if (elem.classList.contains('leaf-node')) {
         elem.children[0].classList.toggle('checked');
         hasChecked = true;
       }
@@ -139,8 +135,8 @@ function TransformSelector() {
         let node = elem;
         while (true) {
           node = node.parentElement;
-          if (node.classList.contains('file-tree')) {break;}
-          if (!node.classList.contains('collapsible')) {continue;}
+          if (node.classList.contains('nav-tree')) {break;}
+          if (!node.classList.contains('folder')) {continue;}
           node.children[0].children[0].classList.add('checked');
         }
       }

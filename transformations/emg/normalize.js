@@ -3,7 +3,7 @@
 export const name = 'Normalize';
 export const tooltip = 'Divide o sinal pela magnitude do valor mais distante de zero.\n'
 'Ou seja, para EMG, divide o sinal pela contração máxima do músculo.';
-export const func = function(data) {
+export const func = function({data}) {
   //find the max absolute value
   let max = 0;
   data.forEach(sample => {

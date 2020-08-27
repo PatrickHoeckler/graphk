@@ -18,6 +18,7 @@
 .graphK .icon-right-angle::before { content: "\276F";}
 .graphK .icon-routine::before {content: '\25CE';}
 .graphK .icon-step::before {content: '\2937';}
+.graphK .icon-pick::before {content: '\26CF';}
 
 /*Miscellaneous*/
 .graphK .icon-plus::before { content: "\1F7A4"; }

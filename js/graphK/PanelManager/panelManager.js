@@ -28,6 +28,7 @@ function PanelManager(...panels) {
   //Private Properties
   //Public Attributes
   //Public Methods
+  this.node = () => node;
   this.appendTo = function(elem) {
     node.style.visibility = 'hidden';
     elem.appendChild(node);

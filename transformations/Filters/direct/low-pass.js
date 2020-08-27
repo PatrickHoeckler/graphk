@@ -7,10 +7,9 @@
 
 export const name = 'Low pass';
 export const tooltip = 'Filtro passa baixas'
-export const func = function (data, {fc, n, dt, method}) {
+export const func = function ({data, fc, n, dt, method}) {
   //constants
-  if (n === undefined) n = 1;
-  if (dt === undefined) dt = Math.abs(data[1][0] - data[0][0]);
+  if (!dt) dt = Math.abs(data[1][0] - data[0][0]);
   const _2way = method === '2-way';
   const RC = 1 / (2 * Math.PI * fc);
   const alpha = dt / (RC + dt);
@@ -35,12 +34,13 @@ export const func = function (data, {fc, n, dt, method}) {
 };
 
 export const args = [
-  {name: 'fc', type: 'number', tooltip: 'Frequência de corte'},
-  {name: 'n' , type: 'number', optional: true, tooltip: 'Número de vezes que o filtro será aplicado. Valor padrão: 1'},
+  {name: 'fc', type: 'number', min: 0, value: 1, tooltip: 'Frequência de corte'},
   {
-    name: 'dt',
-    type: 'number',
-    optional: true,
+    name: 'n' , type: 'number', min: 1, value: 1, step: 1,
+    tooltip: 'Número de vezes que o filtro será aplicado.'
+  },
+  {
+    name: 'dt', type: 'number', optional: true, min: 0,
     tooltip: 'Intervalo de tempo entre amostras. Se um valor não for dado, ' + 
     'o intervalo entre as duas primeiras amostras será calculado.'
   },

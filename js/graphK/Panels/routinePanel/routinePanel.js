@@ -1,17 +1,18 @@
 "use strict";
 
-//    COISAS PARA AJUSTAR NO FUTURO
-//
-//
-
 module.exports = {RoutinePanel};
 
+const _routineData = Symbol('RoutinePanel.Symbol');
+
 const {
-  appendNewElement, selectDataInRange, defaultCallParent
+  appendNewElement, defaultCallParent
 } = require('../../auxiliar/auxiliar.js');
 const {DataHandler} = require('../../auxiliar/dataHandler.js');
-const {Context} = require('../../auxiliar/context.js');
 const {Panel} = require('../../PanelManager/panel.js');
+const {RoutineMaker} = require('./routineMaker.js');
+const {RoutineStep} = require('./routineStep.js');
+const {Routine} = require('./routine.js');
+const fs = require('fs');
 
 function RoutinePanel(modeObj) {
   if (modeObj === null || typeof(modeObj) !== 'object') {throw new Error(
@@ -20,82 +21,62 @@ function RoutinePanel(modeObj) {
   );}
   //Constants
   const mode = modeObj;
-  const routines = [];
+  //TODO: test changing this to a HTMLCollection, because it is a dynamic list
+  //You can get the list by: pContents.getElementsByClassName('selected')
   const selectedElems = [];
   //Public Attributes
   //Private Properties
   var pContents, toolbar;
+  var routineSteps, transformDict;
   var callParent = defaultCallParent;
 
   //Public Methods
-  this.newRoutine = newRoutine;
-  this.addToRoutine = addToRoutine;
-  this.removeInRoutine = removeInRoutine;
-  this.renameRoutine = renameRoutine;
   this.onCallParent = function (executor = defaultCallParent) {
     if (typeof(executor) !== 'function') { throw new TypeError(
       `Expected a function for the 'executor' argument. Got type ${typeof(executor)}`
     );}
     callParent = executor;
   }
+  this.updateTransforms = function(newTransforms, dictionary) {
+    routineSteps = RoutineMaker.transformsToSteps(newTransforms);
+    if (dictionary) {transformDict = dictionary;}
+  }
 
   //Private Functions
-  function newRoutine(name, openRenameBox = false) {
-    if (!name) {name = 'Routine';}
-    let routine = [];
-    let rElem = appendNewElement(pContents, 'div', 'routine');
-    let rHead = appendNewElement(rElem, 'div', 'routine-head');
-    appendNewElement(rElem, 'div', 'routine-contents');
-    appendNewElement(rHead, 'span', 'node-icon');
-    appendNewElement(rHead, 'span', 'node-name').innerHTML = name;
-    let rButton = appendNewElement(rHead, 'span', 'routine-button routine-exec');
+  function addRoutine(name, openRenameBox = false) {
+    const routine = new Routine();
+    routine.name = name && typeof name === 'string' ? name : 'Routine';
+    routine.createBase();
+    routine.valid = false;
+    let rNode = createRoutineElem(routine);
+    if (openRenameBox) {renameRoutine(rNode);}
+  }
+  function createRoutineElem(routine) {
+    let rNode = appendNewElement(pContents, 'div', 'routine-node');
+    if (!routine.valid) {rNode.classList.add('invalid');}
+    appendNewElement(rNode, 'span', 'node-icon');
+    appendNewElement(rNode, 'span', 'node-name').innerHTML = routine.name;
+    let rButton = appendNewElement(rNode, 'span', 'routine-button routine-exec');
     rButton.setAttribute('title', 'Execute Routine');
-    routines.push(routine);
-    if (openRenameBox) {renameRoutine(rHead);}
-  }
-  function addToRoutine(target, name, openRenameBox) {
-    let id = findRoutineId(target);
-    let routine = routines[id];
-    if (!routine) {return false;}
-    routine.push(null); //push empty step to routine
-    if (!name) {name = 'Step ' + routine.length;}
-    pContents.children[id].classList.remove('collapsed');
-    let rContents = pContents.children[id].children[1];
-    let rStep = appendNewElement(rContents, 'div', 'routine-step empty');
-    appendNewElement(rStep, 'div', 'node-icon');
-    appendNewElement(rStep, 'div', 'node-name').innerHTML = name;
-    let rButton = appendNewElement(rStep, 'span', 'routine-button routine-cfg');
-    rButton.setAttribute('title', 'Configure Step');
-    if (openRenameBox) {renameRoutine(rStep);}
-    return true;
-  }
-  function findRoutineId(target) {
-    if (typeof(target) === 'number') {return pContents.children[target] ? target : null;}
-    else { try {
-      for (let i = 0; i < pContents.children.length; i++) {
-        if (pContents.children[i].contains(target)) {return i;}
-      }
-      return null;
-    } catch {return null;}}
+    rNode[_routineData] = routine;
+    return rNode;
   }
   function getContainingElement(target) {
     for (let curElem = target;; curElem = curElem.parentElement) {
       if (!curElem || curElem === pContents) {return null;}
-      if (curElem.classList.contains('routine-head') ||
-          curElem.classList.contains('routine-step')) {return curElem;}
+      if (curElem[_routineData]) {return curElem;}
     }
   }
   function renameRoutine(target) {
-    let elem = getContainingElement(target);
-    if (!elem) {return false;}
-    if (!mode.change(mode.RENAME)) {return false;}
+    const rNode = getContainingElement(target);
+    if (!rNode || !mode.change(mode.RENAME)) {return false;}
     mode.lock();
-    let [,textElem, rButton] = elem.children;
+    const routine = rNode[_routineData];
+    const [, textElem, rButton] = rNode.children;
     textElem.style.display = rButton.style.display = 'none';
-    let renameBox = appendNewElement(elem, 'input', 'rename');
+    const renameBox = appendNewElement(rNode, 'input', 'rename');
     renameBox.setAttribute('type', 'text');
     renameBox.setAttribute('value', textElem.innerText);
-    renameBox.focus();
     renameBox.select();
 
     //Functions to handle input events
@@ -103,123 +84,104 @@ function RoutinePanel(modeObj) {
       if (e.keyCode === 13 || e.keyCode === 27) {renameBox.blur();}
     }
     function setName() {
-      textElem.innerHTML = renameBox.value;
+      textElem.innerHTML = routine.name = renameBox.value;
       textElem.style.display = rButton.style.display = '';
+
       mode.unlock();
       mode.change(mode.NORMAL);
       renameBox.remove();
       renameBox.removeEventListener('keydown', checkStopKeys);
     }
-    renameBox.addEventListener('focusout', setName, {once: true});
+    renameBox.addEventListener('blur', setName, {once: true});
     renameBox.addEventListener('keydown', checkStopKeys);
     return true;
   }
+  function editRoutine(target) {
+    const rNode = getContainingElement(target);
+    if (!rNode) {return;}
+    const routine = rNode[_routineData];
+    callParent('full-window', {title: `Edit Routine - ${routine.name}`})
+    .catch(() => {return;})
+    .then(({node, stop}) => {
+      RoutineMaker.editRoutine(routine, routineSteps, node)
+      .then((newRoutine) => {
+        if (newRoutine) {
+          rNode[_routineData] = newRoutine;
+          newRoutine.valid = !newRoutine.checkValidity().error;
+          if (newRoutine.valid) {rNode.classList.remove('invalid');}
+          else {rNode.classList.add('invalid');}
+        }
+        stop();
+      });
+    });
+  }
   function executeRoutine(target) {
-    let id = findRoutineId(target);
-    let routine = routines[id];
-    if (!routine.some((step) => step)) {return;}
-    //calls parent to get data via mouse selection
+    const rNode = getContainingElement(target);
+    if (!rNode) {return;}
+    const routine = rNode[_routineData];
+    if (!routine.valid) {return;}
+
     callParent('get-data').then(({dataHandler, canceled}) => {
       if (canceled) {return;}
       let value = dataHandler.isHierarchy ?
         dataHandler.getLevel(0).data : dataHandler.value;
-      let type = dataHandler.type;
-      if (type !== 'normal') {throw TypeError(
+      if (dataHandler.type !== 'normal') {throw TypeError(
         `Expected a set of data of type 'normal'`
       );}
-      for (let step of routine) {
-        if (!step) {continue;}
-        if (step.func) {value = step.func(value, step.args);}
-        else if (step.range) {value = selectDataInRange(value, step.range);}
-      }
+      value = routine.calculate(value);
       //calls parent to add new data to tree
       return callParent('add-data', {dataHandler: new DataHandler({
-        name: target.innerText, value, type
+        name: routine.name, value, type: dataHandler.type
       })});
     });
   }
-  function createStepAction(rStep) {
-    let {x, y, right} = rStep.children[2].getBoundingClientRect();
-    callParent('context', {x, y, contextItems: [
-      {name: 'Trasformation', return: 'transform'},
-      {name: 'Range', type: 'submenu', submenu: [
-        {name: 'Select from chart', return: 'select-range'},
-        {name: 'Input limits', return: 'input-range'}
-      ]},
-      {name: 'Clear Step', return: 'clear'}
-    ]})
-    .then((item) => { 
-      if (!item) {return;}
-      let id = findRoutineId(rStep);
-      let stepId = Array.prototype.indexOf.call(rStep.parentElement.children, rStep);
-      if (item === 'transform') {
-        callParent('transform', {x: right}).then(({func, args, canceled}) => {
-          if (canceled) {return;}
-          routines[id][stepId] = {func: func, args: args};
-          rStep.classList.remove('empty');
-        });
-      }
-      else if (item === 'select-range') {callParent(item);}
-      else if (item === 'input-range') {
-        callParent('arguments', {argsFormat: [
-          {name: 'lower',  type: 'number', optional: true,
-           tooltip: 'Limite inferior para o eixo x'},
-          {name: 'higher', type: 'number', optional: true,
-           tooltip: 'Limite superior para o eixo x'},
-        ], windowTitle: 'Input x-axis selection range'})
-        .then(({args, canceled}) => {
-          if (canceled) {return;}
-          if (args.lower >= args.higher) {return alert(
-            'Não é possível fazer a seleção no intervalo selecionado'
-          );}
-          routines[id][stepId] = {range: Object.values(args)};
-          rStep.classList.remove('empty');
-        });
-      }
-      else if (item === 'clear') {
-        routines[id][stepId] = null;
-        rStep.classList.add('empty');
+  function loadRoutine() {
+    callParent('load-file', {filters: ['json']})
+    .then(function ({canceled, filePaths}) {
+      if (canceled) {return;}
+      for (let path of filePaths) {
+        let fileString = fs.readFileSync(path, 'utf8');
+        let routine = Routine.loadString(fileString, transformDict);
+        if (typeof routine === 'string') {
+          if (routine === 'invalid') {
+            alert(`${path}\nThis file can't be converted to a routine`);
+          }
+          else if (routine === 'hash') {
+            alert(`${path}\nThis routine needs transformations that can't be found. ` + 
+            `This may either be because the file was removed, or it was altered`);
+          }
+        }
+        else {
+          routine.valid = !routine.checkValidity().error;
+          createRoutineElem(routine);
+        }
       }
     });
   }
-  function removeInRoutine(target) {
-    let elem = getContainingElement(target);
-    if (!elem) {return false;}
-    let id = findRoutineId(elem);
-    if (id === null) {return false;}
-    if (elem.classList.contains('routine-head')) {
-      routines.splice(id, 1);
-      pContents.children[id].remove();
-    }
-    else {
-      let rContents = pContents.children[id].children[1];
-      let stepId = Array.prototype.indexOf.call(rContents.children, elem);
-      elem.remove();
-      routines[id].splice(stepId, 1);
-    }
-    id = selectedElems.indexOf(elem);
+  function saveRoutine(target) {
+    if (!(target = getContainingElement(target))) {return;}
+    const routine = target[_routineData];
+    callParent('save-json', {name: routine.name, json: routine.toString()});
+  }
+  function removeRoutine(target) {
+    let rNode = getContainingElement(target);
+    if (!rNode) {return false;}
+    rNode.remove();
+    let id = selectedElems.indexOf(rNode);
     if (id !== -1) {selectedElems.splice(id, 1);}
     if (selectedElems.length === 0) {updateToolbarButtons(0);}
     return true;
   }
   function executeToolbarAction(buttonId, targetElems) { return function execute() 
   {
-    //If clicked on new routine
-    if (buttonId === 0) {newRoutine('Routine', true);}
-    //If clicked on new step
-    else if (buttonId === 1) {
-      let openRenameBox = targetElems.length === 1;
-      for (let target of targetElems) {
-        addToRoutine(target, null, openRenameBox);
-      }
+    if (buttonId === 0) {addRoutine('Routine', true);}
+    else if (buttonId === 1) {loadRoutine();}
+    else if (buttonId === 2) {
+      for (let target of targetElems) {saveRoutine(target);}
     }
-    else if (buttonId === 2) { //If clicked on remove
-      while (targetElems.length) {
-        let target = targetElems.pop();
-        //must make this check to avoid removing an element that was contained
-        //inside another element that was already removed
-        if (pContents.contains(target)) {removeInRoutine(target);}
-      }
+    else if (buttonId === 3) {editRoutine(targetElems[0]);}
+    else if (buttonId === 4) { 
+      while (targetElems.length) {removeRoutine(targetElems.pop());}
     }
     window.removeEventListener('mouseup', execute);
   }}
@@ -229,16 +191,16 @@ function RoutinePanel(modeObj) {
       if (selectedElems.includes(elem)) {return;}
       elem.classList.add('selected');
       selectedElems.push(elem);
+      updateToolbarButtons(1);
     }
     else {
-      //If clicked outside any routine
       if (!elem) {return clearSelection();}
       while (selectedElems.length > 1) {
         selectedElems.pop().classList.remove('selected');
       }
       if (selectedElems[0] !== elem) {
         if (selectedElems[0]) {selectedElems[0].classList.remove('selected');}
-        else {updateToolbarButtons(1);}
+        else {updateToolbarButtons(2);}
         elem.classList.add('selected');
         selectedElems[0] = elem;
       }
@@ -250,11 +212,15 @@ function RoutinePanel(modeObj) {
   }
   function updateToolbarButtons(level) {
     if (level === 0) {
-      //Disables the new step and remove buttons (from when there's no selection)
-      for (let i of [1, 2]) {toolbar.children[i].classList.add('inactive');}
+      //Disables the save, edit and remove buttons (from when there's no selection)
+      for (let i of [2, 3, 4]) {toolbar.children[i].classList.add('inactive');}
     }
-    else if (level === 1) { //Enables new step and remove buttons
-      for (let i of [1, 2]) {toolbar.children[i].classList.remove('inactive');}
+    else if (level === 1) { //Enables save and remove buttons
+      for (let i of [3])    {toolbar.children[i].classList.add('inactive');}
+      for (let i of [2, 4]) {toolbar.children[i].classList.remove('inactive');}
+    }
+    else if (level === 2) { //Enables save, edit and remove buttons
+      for (let i of [2, 3, 4]) {toolbar.children[i].classList.remove('inactive');}
     }
     else {return;}
   }
@@ -264,7 +230,9 @@ function RoutinePanel(modeObj) {
     //Inheriting from Panel Object
     Panel.call(this, 'Rotinas', [
       {className: 'icon-plus', tooltip: 'New Routine'},
-      {className: 'icon-step', tooltip: 'New Step'},
+      {className: 'icon-document', tooltip: 'Load Routine'},
+      {className: 'icon-save', tooltip: 'Save Routine'},
+      {className: 'icon-pick', tooltip: 'Edit Routine'},
       {className: 'icon-x'   , tooltip: 'Remove'},
     ]);
     toolbar = this.node().getElementsByClassName('panel-toolbar')[0];
@@ -272,26 +240,20 @@ function RoutinePanel(modeObj) {
     pContents.classList.add('routine-panel');
     updateToolbarButtons(0);
 
-    pContents.addEventListener('mouseover', function (e) {
+    pContents.addEventListener('mouseover', function ({target}) {
       if (mode.is(mode.SELECT)) {return;}
-      let elem = getContainingElement(e.target);
+      let elem = getContainingElement(target);
       if (elem) {elem.classList.add('highlight');}
     });
-    pContents.addEventListener('mouseout', (e) => {
-      let elem = getContainingElement(e.target);
+    pContents.addEventListener('mouseout', ({target}) => {
+      let elem = getContainingElement(target);
       if (elem) {elem.classList.remove('highlight');}
     });
     pContents.addEventListener('click', function({target, ctrlKey}) {
       if (!mode.is(mode.NORMAL)) {return;}
       let elem = getContainingElement(target);
-      if (elem) {
-        if (elem.classList.contains('routine-head')) {
-          if (target.classList.contains('routine-exec')) {executeRoutine(elem);}
-          else if (target.classList.contains('node-icon')) {
-            elem.parentElement.classList.toggle('collapsed');
-          }
-        }
-        else if (target.classList.contains('routine-cfg')) {createStepAction(elem);}
+      if (elem && target.classList.contains('routine-exec')) {
+        executeRoutine(elem);
       }
       updateSelectedElems(elem, ctrlKey);
     });
@@ -300,28 +262,21 @@ function RoutinePanel(modeObj) {
       removeInRoutine(e.target);
     });
     pContents.addEventListener('contextmenu', ({x, y, target}) => {
-      let detail;
       let elem = getContainingElement(target);
-      if (!elem) {detail = 'panel';}
-      else if (elem.classList.contains('routine-head')) {detail = 'head';}
-      else {detail = 'step';}
+      let type = !elem ? 'inactive' : undefined;
       callParent('context', {x, y, contextItems: [
-        {name: 'Rename', return: 'rename',
-         type: detail === 'panel' ? 'inactive' : undefined},
-        {name: 'New Routine', return: 'newR'},
-        {name: 'Remove Routine', return: 'remove',
-         type: detail !== 'head' ? 'inactive' : undefined},
-        {type: 'separator'},
-        {name: 'New Step', return: 'newS',
-         type: detail === 'panel' ? 'inactive' : undefined},
-        {name: 'Remove Step', return: 'remove',
-         type: detail !== 'step' ? 'inactive' : undefined},
+        {name: 'New Routine', return: 'new'},
+        {name: 'Save', return: 'save', type},
+        {name: 'Edit', return: 'edit', type},
+        {name: 'Rename', return: 'rename', type},
+        {name: 'Remove', return: 'remove', type},
       ]}).then((item) => {
         if (!item) {return;}
         if (item === 'rename') {renameRoutine(target);}
-        else if (item === 'newR') {newRoutine('Routine', true);}
-        else if (item === 'newS') {addToRoutine(target, null, true);}
-        else if (item === 'remove') {removeInRoutine(target);}
+        else if (item === 'new') {addRoutine('Routine', true);}
+        else if (item === 'save') {saveRoutine(target);}
+        else if (item === 'edit') {editRoutine(target, null, true);}
+        else if (item === 'remove') {removeRoutine(target);}
       });
     });
 

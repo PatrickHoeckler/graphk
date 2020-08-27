@@ -1,5 +1,9 @@
 "use strict";
 
+//TODO: mudar o type 'no-plot' para 'static' no butterworth e consertar todas as referencias
+//incorretas a 'no-plot' no código. Pois a transformação activTime.js também é 'no-plot' mas
+//ela precisa de dados
+
 const {Mode} = require('./auxiliar/mode.js');
 module.exports = {GraphK, Mode};
 
@@ -36,8 +40,8 @@ function GraphK() {
     chart: new ChartPanel(mode),
     properties: new PropertiesPanel()
   };
-
-  //Public Attributes
+  //dictionary indexed by the transform file sha256 hash
+  const transformDict = {};
 
   //Private Properties
   var callParent = defaultCallParent;
@@ -60,24 +64,33 @@ function GraphK() {
     node.style.visibility = '';
   }
   this.setTransforms = function (transforms) {
-    //Transforms are sent in ECMAScript Module objects, that can't be altered
-    //This function bellow converts this ESM objects to normal objects that
-    //can be edited. It also adds default values if some property was not set
-    //in the module file (i.e. the 'type' property default is 'normal')
+    //This function bellow indexes each transform file to the transformDict
+    //object using the file hash as a key. It also adds default values if
+    //some property was not set in the module file (i.e. the 'type' property
+    //default is 'normal')
     (function checkTransforms(tfFolder) {
       for (let tfFile of tfFolder) {
         if (tfFile.value) { //if tfFile is also a folder
           checkTransforms(tfFile.value);
+          if (tfFile.type === 'pkg') {
+            tfFile.value.forEach(tf => tf.pkg = tfFile);
+          }
         }
         else { //if tfFile is a transformation file
           if (!tfFile.type) {tfFile.type = 'normal';}
         }
+        //must add to the dictionary outside the if/else statement above
+        //because if the tfFile is of type pkg, then it is considered a 
+        //folder, but it is a single file with a single hash, containing
+        //multiple transforms.
+        if (tfFile.hash) {transformDict[tfFile.hash] = tfFile;}
       }
     })(transforms.value);
     tfSelector.updateTransforms(transforms);
     panels.transform.updateTransforms(transforms);
+    panels.routine.updateTransforms(transforms, transformDict);
     navTree.clear();
-    for (let f of transforms.value) {navTree.addFolder(f);}
+    for (let f of transforms.value) {navTree.addToTree(f);}
   };
   this.getTransformFromPath = panels.transform.getTransformFromPath;
   this.getDataFromPath = panels.transform.getDataFromPath;
@@ -136,19 +149,21 @@ function GraphK() {
       if (transforms) {
         panels.transform.updateTransforms(transforms);
         navTree.clear();
-        for (let f of transforms.value) {navTree.addFolder(f);}
+        for (let f of transforms.value) {navTree.addToTree(f);}
       }
       resolve(transforms);
     });
   });}
   function respondChild(message, details = {}) {
     if (message === 'context'  ) {return contextMenu(details);}
-    if (message === 'load-file') {return callParent(message);}
+    if (message === 'load-file') {return callParent(message, details);}
     if (message === 'save-file') {return callParent(message, details);}
+    if (message === 'save-json') {return callParent(message, details);}
     if (message === 'capture'  ) {return callParent(message, details);}
     if (message === 'configure-transforms') {return configureTransforms();}
+    if (message === 'full-window') {return createFullWindow(details.title);}
     if (message === 'transform') {return selectTransform(details.x, details.y);}
-    if (message === 'get-data') {return panels.transform.startDataSelect();}
+    if (message === 'get-data' ) {return panels.transform.startDataSelect();}
     if (message === 'add-data') {
       panels.transform.addToTree(details.dataHandler, false);
       return Promise.resolve(null);
@@ -180,7 +195,7 @@ function GraphK() {
     function selected(event) {
       mode.unlock();
       let elem = navTree.getContainingElement(event.target);
-      if (!elem || !elem.classList.contains('leaf')) {return;}
+      if (!elem || !elem.classList.contains('leaf-node')) {return;}
       elem.classList.remove('highlight');
       tfWindow.hide();
       let path = navTree.findPath(elem);
@@ -204,7 +219,7 @@ function GraphK() {
   });}
   function getArguments(argsFormat, title = 'Select Parameters') {
   return new Promise((resolve) => {
-    if (!argsFormat) {return resolve({args: null});}
+    if (!argsFormat) {return resolve({args: {}});}
     const argsSelector = new ArgsSelector(argsFormat, node, title);
     argsSelector.onCallParent(function (message, details) {
       if (message === 'get-data') {return panels.transform.startDataSelect();}
@@ -226,10 +241,23 @@ function GraphK() {
               dataHandler.getLevel(0).data : dataHandler.value;
           }
         }
-        resolve({args: args});
-        return Promise.resolve(null);
+        resolve({args});
       }
     });
+  });}
+  //TODO: change how this function creates the full window, probably need to
+  //revisit the code window.js to make it more functional and encapsulated
+  function createFullWindow(title) {return new Promise((resolve, reject) => {
+    if (!panelManager.node().parentElement) {
+      return reject('Already have a full window open');
+    }
+    const {wNode, wContents} = Window.createFullWindow(title);
+    panelManager.node().remove();
+    node.appendChild(wNode);
+    resolve({node: wContents, stop: function() {
+      wNode.remove();
+      panelManager.appendTo(node);
+    }});
   });}
 
 
@@ -273,5 +301,5 @@ function GraphK() {
       mouseOverElem = null;
     });
     navTree.node().addEventListener('click', (e) => navTree.toggleFolder(e.target));
-  })();
+  }).call(this);
 }

@@ -1,0 +1,97 @@
+/*Routine Panel*/
+.routine-panel {font-size: 14px;}
+.routine-node > .node-name {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-left: 4px;
+}
+.routine-node {display: flex; padding: 1px 0px 1px 3px;}
+.routine-node > .node-icon::before {content: "\25CE";}
+.routine-node > .routine-exec {
+  display: none;
+  align-self: flex-end;
+  margin-left: auto;
+  margin-right: 5px;
+}
+.routine-node > .routine-exec::before {content: "\25B7";}
+.routine-node > .routine-exec:hover::before {content: "\25B6";}
+.routine-node.highlight > .routine-exec {display: unset;}
+.routine-node.invalid {opacity: 0.4;}
+.routine-node.invalid > .routine-exec {display: none;}
+
+/*Routine Maker*/
+.routine-maker {
+  display: flex;
+  width: 100%; height: 100%;
+}
+#routineMakerGrid1, #routineMakerGrid2 {
+  fill: none; stroke: var(--design-grid-color);
+}
+.routine-maker .row-container {min-width: fit-content;}
+.routine-maker .highlight {stroke-width: 1;}
+.routine-maker .routine-control {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--panel-color);
+  flex-grow: 1;
+}
+.routine-maker .routine-design {
+  user-select: none;
+  border: var(--design-region-border);
+  background-color: var(--design-region-color);
+  flex-grow: 1;
+}
+.routine-maker .connect-group {
+  stroke: var(--design-connection-color);
+  stroke-width: 3;
+}
+.routine-maker .routine-step {
+  opacity: 0.9; font-size: 12px;
+  fill: var(--design-font-color);
+}
+.routine-maker .routine-step-box > rect {
+  rx: 2;
+  fill: var(--design-step-box-color);
+  stroke: var(--design-step-box-stroke-color);
+}
+.routine-maker .highlight .routine-step-box > rect {stroke: var(--design-highlight-color);}
+.routine-maker .routine-step-box > text {
+  font-weight: bold; text-anchor: middle;
+}
+.routine-maker .step-plug > rect {
+  width: 30px; x: -15px;
+  fill: none;
+  stroke-width: 0;
+}
+.routine-maker .step-plug > circle {
+  r: 5; stroke-width: 1; stroke: var(--design-step-box-stroke-color);
+}
+.routine-maker .step-plug .highlight,
+.routine-maker .highlight .step-plug > circle {stroke: var(--design-highlight-color);}
+
+/*Parameter type styling*/
+/*  Plug Colors  */
+.routine-maker .parameter-number > .step-plug > circle {fill: var(--design-plug-color-number);}
+.routine-maker .parameter-data   > .step-plug > circle {fill: var(--design-plug-color-data);}
+/*  Parameter Boxes*/
+.routine-maker .parameter-box > rect {fill: var(--design-parameter-box-color);}
+.routine-maker .parameter-number > .parameter-box {cursor: ew-resize;}
+.routine-maker .parameter-data   > .parameter-box > rect{fill: none;}
+
+/*Parameter input styling*/
+.routine-maker .parameter-input-number {
+  background-color: var(--design-parameter-box-color);
+  color: var(--design-font-color);
+  font-size: 12px;
+  height: 100%; width: 100%;
+  border: none; outline: none;
+  padding: 0;
+  text-align: center;
+}
+.routine-maker .parameter-input-number::-webkit-outer-spin-button,
+.routine-maker .parameter-input-number::-webkit-inner-spin-button {
+  margin: 0; -webkit-appearance: none;
+}
+.routine-maker .parameter-input-select > g > rect {fill: var(--design-parameter-box-color);}
+.routine-maker .parameter-input-select > g:hover > rect {fill: var(--design-option-hover-color);}

@@ -1,0 +1,78 @@
+.tree-wrapper {
+  flex-grow: 1;
+  border-style: groove;
+  border-width: 2px;
+  border-color: var(--panel-frame-color);
+  margin: 6px 4px;
+  overflow: hidden;
+  display: flex;
+}
+.tree-wrapper > .nav-tree {width: 0; flex-grow: 1;}
+.nav-tree {
+  font-size: 14px;
+  overflow-x: hidden;
+  user-select: none;
+}
+.nav-tree.highlightable .folder-node:hover,
+.nav-tree.highlightable .leaf-node:hover {background-color: var(--highlight-color);}
+
+.nav-tree .folder-contents{
+  display: flex;
+  flex-direction: column;
+  padding-left: 6px;
+  margin-left: 10px;
+  border-left: 1px solid;
+  border-left-color: gray;
+  text-overflow: ellipsis;
+}
+.nav-tree .collapsed>.folder-contents {display: none;}
+.nav-tree .folder-node, .nav-tree .leaf-node {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  padding: 1px 0px 1px 4px;
+}
+.nav-tree .node-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-left: 4px;
+}
+
+/*Tree icons*/
+/*  Folder icons  */
+.nav-tree .folder {--icon-uncollapsed:"\1F5C1"; --icon-collapsed  :"\1F5C0";}
+.nav-tree .folder.pkg {--icon-uncollapsed:"\25EB"; --icon-collapsed  :"\25F0";}
+.nav-tree .folder.empty {--icon-uncollapsed:"\1F5CB";}
+/*  Leaf icons  */
+.nav-tree .leaf-node        {--icon:"\25FB";}
+.nav-tree .leaf-node.ready  {--icon:"\25FC";}
+.nav-tree .leaf-node.broken {--icon:"\2715";}
+/*  Icon display behaviour  */
+.folder              > .folder-node > .node-icon::before {content: var(--icon-uncollapsed);}
+.folder.collapsed    > .folder-node > .node-icon::before {content: var(--icon-collapsed);}
+.nav-tree              .leaf-node   > .node-icon::before {content: var(--icon);}
+
+
+/**/
+.nav-tree .warning {
+  outline: 1px solid brown;
+  outline-offset: 0px;
+}
+.nav-tree div.warning {
+  font-size: 12px;
+  padding: 4px;
+  box-sizing: border-box;
+  position: absolute;
+  background-color: rgb(126, 24, 24);
+}
+
+
+/*
+  white space: "\00a0"
+  white circle: "\25CB"
+  black circle: "\25CF"
+  closed folder: "\1F5C0"
+  opened folder: "\1F5C1"
+  empty document : "\1F5CB"
+*/

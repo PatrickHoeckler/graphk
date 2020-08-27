@@ -114,8 +114,9 @@ function FileManager() {
     let transform = getTransformFromPath(path.slice(1));
     return getArguments(transform.args).then(({args, canceled}) => {
       if (canceled) {return {};}
-      let value = file.isHierarchy ? file.getLevel(0).data : file.value;
-      try {value = calculateTransformSafely(transform.func, args, value);}
+      args.data = file.isHierarchy ? file.getLevel(0).data : file.value;
+      let value;
+      try {value = calculateTransformSafely(transform.func, args);}
       catch (err) {throw err;}
       if (value === null || value === undefined) {return {};}
       let dataHandler = new DataHandler({
@@ -195,7 +196,7 @@ function FileManager() {
     }
     throw null;
   }
-  function calculateTransformSafely(func, args, data) {
+  function calculateTransformSafely(func, args) {
     maliciousFunction = false;
     let alertHolder         = alert;
     let setTimeoutHolder    = setTimeout;
@@ -210,7 +211,7 @@ function FileManager() {
       childList: true, subtree: true
     });
     let value;
-    try {try {value = func(data, args);}
+    try {try {value = func(args);}
     finally {
       alert         = alertHolder;
       setTimeout    = setTimeoutHolder;

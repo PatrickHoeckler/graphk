@@ -7,8 +7,7 @@
 
 export const name = 'Butterworth';
 export const tooltip = 'Filtro Butterworth';
-export const func = function (data, {order, fc, unit, dt}) {
-  if (!dt) dt = Math.abs(data[1][0] - data[0][0]);
+export const func = function ({order, fc, unit, dt}) {
   const fs = 1 / dt;
   const useHz = unit === 'Hz';
   
@@ -93,11 +92,10 @@ export const func = function (data, {order, fc, unit, dt}) {
 };
 export const type = 'no-plot';
 export const args = [
-  {name: 'order', type: 'number'},
-  {name: 'fc', type: 'number', tooltip: 'Frequência de corte'},
+  {name: 'order', type: 'number', min: 1, step: 1, value: 2},
+  {name: 'fc', type: 'number', min: 0, value: 1, tooltip: 'Frequência de corte'},
   {
-    name: 'unit',
-    type: 'select',
+    name: 'unit', type: 'select',
     option: [
       {name: 'Hz'},
       {name: 'rad/s'}
@@ -105,10 +103,7 @@ export const args = [
     tooltip: 'Unidade da frequência de corte'
   },
   {
-    name: 'dt',
-    type: 'number',
-    optional: true,
-    tooltip: 'Intervalo de tempo entre amostras. Se um valor não for dado, ' + 
-    'o intervalo entre as duas primeiras amostras será calculado.'
+    name: 'dt', type: 'number', min: 0, value: 1,
+    tooltip: 'Intervalo de tempo entre amostras'
   }
 ];

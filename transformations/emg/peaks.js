@@ -1,9 +1,7 @@
 "use strict";
 
 export const name = 'Peaks';
-export const func = function (data, {minX, minY, d}) {
-  if (minX === undefined) minX = 0;
-  if (minY === undefined) minY = 0;
+export const func = function ({data, minX, minY, d}) {
   if (d === undefined) d = 1;
   var out = [];
   let lastPeak = [];
@@ -28,6 +26,12 @@ export const func = function (data, {minX, minY, d}) {
 export const type = 'scatter';
 export const tooltip = `Encontra os extremos locais do conjunto de dados`;
 export const args = [
-  {name: 'minX', type: 'number', optional: true, tooltip: 'Distância mínima entre 2 pontos no eixo x. Valor padrão: 0'},
-  {name: 'minY', type: 'number', optional: true, tooltip: 'Distância mínima entre 2 pontos no eixo y. Valor padrão: 0'},
+  {
+    name: 'minX', type: 'number', value: 0, min: 0,
+    tooltip: 'Distância mínima entre 2 pontos no eixo x.'
+  },
+  {
+    name: 'minY', type: 'number', value: 0, min: 0,
+    tooltip: 'Distância mínima entre 2 pontos no eixo y. Valor padrão: 0'
+  },
 ]

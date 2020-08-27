@@ -1,9 +1,8 @@
 "use strict";
 
 export const name = 'Start time';
-export const func = function(data, {noise, k, t0, method}) {
+export const func = function({data, noise, k, t0, method}) {
   if (!Array.isArray(noise)) {return null;}
-  if (!k) {k = 3;}
   const useSD = method === 'Standard Deviation';
   //calculates the noise mean
   let mean = noise.reduce((acc, d) => acc + d[1], 0) / noise.length;
@@ -41,25 +40,23 @@ export const tooltip = 'A partir de um sinal de ruído,';
 export const args = [
   {name: 'noise', type: 'data', tooltip: 'Curva de ruído'},
   {
-    name: 'k',
-    type: 'number',
-    optional: true,
-    tooltip: 'Valor usado para calcular o desvio máximo - é usado diferente dependendo do método utilizado.\n' + 
-    'Valor padrão: 3'
+    name: 'k', type: 'number', value: 3, min: 0,
+    tooltip: 'Valor usado para calcular o desvio máximo - ' +
+      'é usado diferente dependendo do método utilizado.'
   },
   {
-    name: 't0',
-    tooltip: 'Considerar apenas pontos a partir do tempo t0. Checa todos os pontos caso nenhum valor seja passado',
-    type: 'number',
-    optional: true
+    name: 't0', type: 'number', optional: true,
+    tooltip: 'Considerar apenas pontos a partir do tempo t0. ' +
+      'Checa todos os pontos caso nenhum valor seja passado'
   },
   {
-    name: 'method',
-    tooltip: 'Método para detectar o início',
-    type: 'select',
+    name: 'method', type: 'select',
     option: [
-      {name: 'Standard Deviation', tooltip: 'Calcula o desvio padrão do ruído e retorna o primeiro ponto com um desvio k vezes maior'},
-      {name: 'Average', tooltip: 'Calcula a média do ruído e retorna o primeiro ponto que está a uma distância k da média'}
-    ]
+      {name: 'Standard Deviation', tooltip: 'Calcula o desvio padrão do ' + 
+        'ruído e retorna o primeiro ponto com um desvio k vezes maior'},
+      {name: 'Average', tooltip: 'Calcula a média do ruído e retorna o ' +
+        'primeiro ponto que está a uma distância k da média'}
+    ],
+    tooltip: 'Método para detectar o início'
   }
 ]

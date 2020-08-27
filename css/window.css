@@ -1,9 +1,13 @@
+.window {z-index: 9999;}
 .window, .window .window-overlay {
   position: absolute;
   top: 0; left: 0;
   height: 100%; width: 100%;
 }
-.window {z-index: 9999;}
+.window.window-full {
+  position: relative;
+  z-index: unset;
+}
 .window .window-container {
   border-color: var(--window-border-color);
   border-width: 1px;
@@ -13,6 +17,17 @@
   position: absolute;
   box-shadow: 0px 0px 25px -10px black;
 }
+.window.window-full .window-container {
+  box-shadow: none;
+  width: 100%; height: 100%;
+  position: relative;
+}
+.window .window-contents {
+  background-color: var(--window-bg-color);
+  overflow: hidden; flex-grow: 1;
+}
+.window.window-full .window-contents {height: 0;}
+
 .window .window-header {width: 100%;}
 .window .window-frame {
   background-color: var(--window-frame-color);
@@ -26,9 +41,11 @@
   line-height: 23px;
 }
 .window .window-frame>.window-title {
-  flex-grow: 1;
-  padding-left: 4px;
+  padding: 0px 6px;
+  white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
   height: 100%;
+  flex-grow: 1;
 }
 .window .window-frame>.window-buttons {display: flex; height: 100%;}
 .window-buttons>*{padding: 0px 4px;}
@@ -36,7 +53,3 @@
 .window-buttons>.minimize::before {content: '\1F5D5';}
 .window-buttons>.maximize::before {content: '\1F5D6';}
 .window-buttons>.close::before {content: '\2716';}
-.window .window-contents {
-  background-color: var(--window-bg-color);
-  flex-grow: 1; overflow: hidden;
-}

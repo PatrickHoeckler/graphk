@@ -1,93 +1,109 @@
 "use strict";
 
-//    COISAS PARA AJUSTAR NO FUTURO
-//
-//
-
 module.exports = {NavTree};
-
 const {appendNewElement} = require('./auxiliar.js');
+
 function NavTree() {
-  //Public Methods
+  const node = appendNewElement(null, 'div', 'nav-tree');
   this.node  = () => node;
-  this.clear = () => node.innerHTML = '';
-  this.addFolder = function (folder, parent = node) {
-    let wrapper = appendNewElement(parent, 'div', 'collapsible collapsed');
-    let folderDiv = appendNewElement(wrapper, 'div', 'folder');
-    let contents = appendNewElement(wrapper, 'div', 'folder-contents');
-    appendNewElement(folderDiv, 'span', 'node-icon');
-    appendNewElement(folderDiv, 'span', 'node-name').innerHTML = folder.name;
-    if (folder.type === 'pkg') {folderDiv.classList.add('pkg');}
-    for (let file of folder.value) {
-      if (typeof(file.value) === "object") {this.addFolder(file, contents);}
-      else {
-        let leaf = appendNewElement(contents, 'div', 'leaf');
-        if (file.tooltip) {leaf.setAttribute('title', file.tooltip);}
-        appendNewElement(leaf, 'span', 'node-icon');
-        appendNewElement(leaf, 'span', 'node-name').innerHTML = file.name;
-      }
-    }
-    return folderDiv;
+}
+
+function addFolder(folder, parent) {
+  let folderDiv = appendNewElement(parent, 'div', 'folder collapsed');
+  let folderNode = appendNewElement(folderDiv, 'div', 'folder-node');
+  let contents = appendNewElement(folderDiv, 'div', 'folder-contents');
+  appendNewElement(folderNode, 'span', 'node-icon');
+  appendNewElement(folderNode, 'span', 'node-name').innerHTML = folder.name;
+  if (folder.type === 'pkg') {folderDiv.classList.add('pkg');}
+  if (folder.data) {folderDiv[NavTree.dataSymbol] = folder.data;}
+  for (let file of folder.value) {
+    if (typeof(file.value) === "object") {addFolder(file, contents);}
+    else {addLeaf(file, contents);}
   }
-  //Searches up the parents to find the containing element of class 'folder' or 'leaf'
-  this.getContainingElement = function (treeElem) {
+  return folderNode;
+}
+
+function addLeaf(leaf, parent) {
+  let leafNode = appendNewElement(parent, 'div', 'leaf-node');
+  if (leaf.tooltip) {leafNode.setAttribute('title', leaf.tooltip);}
+  if (leaf.data) {leafNode[NavTree.dataSymbol] = leaf.data;}
+  appendNewElement(leafNode, 'span', 'node-icon');
+  appendNewElement(leafNode, 'span', 'node-name').innerHTML = leaf.name;
+  return leafNode;
+}
+
+NavTree.prototype = {
+  constructor: NavTree,
+  clear: function() {this.node().innerHTML = '';},
+  addToTree: function(data, parent) {
+    if (!parent) {parent = this.node();}
+    if (typeof(data.value) === "object") {return addFolder(data, parent);}
+    else {return addLeaf(data, parent);}
+  },
+  //Searches up the parents to find the containing element of class
+  //'folder-node' or 'leaf-node'
+  getContainingElement: function (treeElem) {
     for (let curElem = treeElem;; curElem = curElem.parentElement) {
-      if (!curElem || curElem === node) {return null;}
-      if (curElem.classList.contains('folder') || curElem.classList.contains('leaf')) {return curElem;}
+      if (!curElem || curElem === this.node()) {return null;}
+      if (curElem.classList.contains('leaf-node') ||
+        curElem.classList.contains('folder-node')
+      ) {return curElem;}
     }
-  }
-  this.toggleFolder = function (treeElem) {
+  },
+  collapseAll: function() {
+    let uncollapsed = this.node().getElementsByClassName('collapsible');
+    for (let folder of uncollapsed) {folder.classList.add('collapsed');}
+  },
+  getTopFolder: function (treeElem) {
+    for (let child of this.node().children) {
+      if (child.contains(treeElem)) {return child.children[0];}
+    }
+    return null;
+  },
+  isTopFolder: function (treeElem) {
     let container = this.getContainingElement(treeElem);
-    if (
-      container && //container must be true, else elem given is not part of tree
-      container.classList.contains('folder') && //can only toggle folders
-      !container.classList.contains('empty') //must not be a empty folder
-    ) {container.parentElement.classList.toggle('collapsed');}
-  }
-  this.findPath = function (treeElem) {
+    return (
+      container && container.classList.contains('folder-node') &&
+      container.parentElement.parentElement === this.node()
+    );
+  },
+  findPath:  function (treeElem) {
     let container = this.getContainingElement(treeElem);
     if (!container) {return null;}
-    //Finds path
-    let path = [];
-    let curElem = node;
+    let path = [], curElem = this.node();
     while (curElem !== container) {
       let found = false;
-      for (let i = 0; i < curElem.children.length; i++) {
-        if (!curElem.children[i].contains(container)) {continue;}
+      for (let i = 0, n = curElem.children.length; i < n; i++) {
+        let child = curElem.children[i];
+        if (!child.contains(container)) {continue;}
         found = true;
         path.push(i);
-        //if the element child is collapsible (is a directory)
-        if (curElem.children[i].classList.contains('collapsible')) {
-          curElem = curElem.children[i].children[0].contains(container) ?
-                    curElem.children[i].children[0] : curElem.children[i].children[1];
+        if (child.classList.contains('folder')) {
+          curElem = child.children[0].contains(container) ?
+            child.children[0] : child.children[1];
         }
-        //if the element child has no childs (is a leaf)
-        else {
-          curElem = curElem.children[i];
-        }
+        else {curElem = child;}
+        break;
       }
       if (!found) {return null;}
     }
     return path;
-  }
-  this.isTopFolder = function (treeElem) {
+  },
+  toggleFolder: function (treeElem) {
     let container = this.getContainingElement(treeElem);
-    return (
-      container && container.classList.contains('folder') &&
-      container.parentElement.parentElement.classList.contains('file-tree')
-    );
+    if (
+      container && //container must be true, else elem given is not part of tree
+      container.classList.contains('folder-node') && //can only toggle folders
+      !container.parentElement.classList.contains('empty') //must not be a empty folder
+    ) {container.parentElement.classList.toggle('collapsed');}
+  },
+  //sets the bound data for the container element of treeElem or,
+  //if data is undefined, returns the current bound data
+  elemData: function(treeElem, data) {
+    let container = this.getContainingElement(treeElem);
+    if (!container) {return null;}
+    return !data ? container[NavTree.dataSymbol] :
+      (container[NavTree.dataSymbol] = data);
   }
-  this.getTopFolder = function (treeElem) {
-    let top = node.children;
-    for (let i = 0; i < top.length; i++) {
-      if (top[i].contains(treeElem)) {return top[i].children[0];}
-    }
-    return null;
-  }
-  this.collapseAll = function() {
-    let uncollapsed = node.getElementsByClassName('collapsible');
-    for (let folder of uncollapsed) {folder.classList.add('collapsed');}
-  }
-  //Initialize object
-  var node = appendNewElement(null, 'div', 'file-tree');
 }
+Object.defineProperty(NavTree, 'dataSymbol', {value: Symbol('NavTree')});

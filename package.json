@@ -2,7 +2,7 @@
   "name": "graphk",
   "productName": "graphK",
   "version": "1.0.0",
-  "description": "Tem que dar um nome pra esse projeto :)",
+  "description": "Desktop application (powered by Electron) for data visualization (powered by d3.js) and data manipulation (main focus is for working with electromyography data)",
   "main": "main.js",
   "private": true,
   "scripts": {

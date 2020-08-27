@@ -15,7 +15,7 @@ function intTrap(data, startIndex, endIndex) {
 }
 
 export const name = 'Teste';
-export const func = function(data, {extremes}) {
+export const func = function({data, extremes}) {
   //Find the extremes that belong to the range of data
   let dataExtremes = [];
   let lastSample = 1;

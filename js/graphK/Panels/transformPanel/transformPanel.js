@@ -74,7 +74,7 @@ function TransformPanel(modeObj) {
     //Step 1 - Recreate the file tree with new transforms
     navTree.clear();
     for (let dataHandler of files) {
-      let folderDiv = navTree.addFolder({
+      let folderDiv = navTree.addToTree({
         name: dataHandler.name, value: newTransforms.value
       });
       if (!dataHandler.value) {folderDiv.classList.add('empty');}
@@ -131,7 +131,7 @@ function TransformPanel(modeObj) {
     }
     fileManager.addFile(dataHandler);
     let transforms = fileManager.getTransformFromPath();
-    let folderDiv = navTree.addFolder({name: dataHandler.name, value: transforms.value});
+    let folderDiv = navTree.addToTree({name: dataHandler.name, value: transforms.value});
     if (!dataHandler.value) {folderDiv.classList.add('empty');}
     else if (dataHandler.type !== 'no-plot') {folderDiv.draggable = true;}
     if (openRenameBox) {renameFile(folderDiv);}
@@ -246,15 +246,16 @@ function TransformPanel(modeObj) {
     const path = navTree.findPath(treeElem);
     let dataHandler = fileManager.getDataFromPath(path);
     if (!(dataHandler instanceof DataHandler)) {return [];}
-    const typeProp = path.length !== 1 || dataHandler.type === 'no-plot' ? {
+    const props = [
+      {name: 'Name', value: dataHandler.name, disabled: path.length !== 1}
+    ];
+    props.push(path.length !== 1 || dataHandler.type === 'no-plot' ? {
       name: 'Type', value: dataHandler.type, type: 'text', disabled: true
     } : {
       name: 'Type', value: dataHandler.type, type: 'select',
       option: ['normal', 'scatter']
-    }
-    return [
-      {name: 'Name', value: dataHandler.name, disabled: path.length !== 1}, typeProp
-    ]
+    });
+    return props;
   }
   function propertyChanged({name, value}) {
     let dataHandler = fileManager.getDataFromPath(navTree.findPath(selectedElems[0]));
@@ -311,7 +312,8 @@ function TransformPanel(modeObj) {
       else {addToTree(new DataHandler({name: 'empty'}), true);}
     }
     else if (buttonId === 1) { //If clicked on load file
-      callParent('load-file').then(({canceled, filePaths}) => {
+      callParent('load-file', {filters: ['json', 'csv', 'any']})
+      .then(({canceled, filePaths}) => {
         if (!canceled) {readFiles(filePaths);}
       });
     }
@@ -406,7 +408,7 @@ function TransformPanel(modeObj) {
       if (!elem) {return;}
       let folderEmpty, isLeaf;
       folderEmpty = isLeaf = false;
-      if (elem.classList.contains('folder')) {
+      if (elem.classList.contains('folder-node')) {
         if (elem.classList.contains('empty')) {folderEmpty = true;}
         else if (!navTree.isTopFolder(elem)) {return;}
       }
@@ -442,7 +444,7 @@ function TransformPanel(modeObj) {
       if (mode.is(mode.DELETE)) {
         if (
           !navTree.isTopFolder(mouseOverElem) &&
-          mouseOverElem.className === 'leaf'
+          mouseOverElem.className === 'leaf-node'
         ) {return;}
       }
       //if not in normal mode - highlights only elements with data associated
@@ -475,7 +477,7 @@ function TransformPanel(modeObj) {
       if (mode.is(mode.DELETE)) {deleteFromTree(elem);}
       else if (mode.is(mode.SELECT)) {selectTreeElem(elem);}
       else if (mode.is(mode.NORMAL)){
-        if (!elem.classList.contains('leaf')) {return;}
+        if (!elem.classList.contains('leaf-node')) {return;}
         fileManager.calculateTransform(navTree.findPath(elem),
           (argsFormat) => callParent('arguments', {argsFormat})
         ).then(({transform, dataHandler}) => {
@@ -523,8 +525,8 @@ function TransformPanel(modeObj) {
           elem.classList.remove('empty');
         }
         else {
-          let leafs = elem.parentElement.getElementsByClassName('leaf');
-          for (let leaf of leafs) {leaf.className = 'leaf';}
+          let leafs = elem.parentElement.getElementsByClassName('leaf-node');
+          for (let leaf of leafs) {leaf.className = 'leaf-node';}
         }
       }
       function dragOver (event) {
