@@ -353,12 +353,14 @@ function inputSelectParameter({target}) {
     optionsGroup.remove();
     paramData.container[_paramData] = paramData;
     svg.removeEventListener('mouseup', stop);
+    svg.removeEventListener('mousedown', stop);
   }
   const thisStepM = StepMaker.getStepMakerFromElem(paramData.container);
   const svg = StepMaker.getContainingSVG(thisStepM.selection.node());
   thisStepM.moveInFront();
   thisStepM.selection.append(() => optionsGroup.node());
   svg.addEventListener('mouseup', stop);
+  svg.addEventListener('mousedown', stop);
   const t0 = Date.now();
 }
 

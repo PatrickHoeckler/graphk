@@ -64,6 +64,7 @@ function GraphK() {
     node.style.visibility = '';
   }
   this.setTransforms = function (transforms) {
+    const validType = ['normal', 'no-plot', 'scatter', 'static'];
     //This function bellow indexes each transform file to the transformDict
     //object using the file hash as a key. It also adds default values if
     //some property was not set in the module file (i.e. the 'type' property
@@ -77,7 +78,7 @@ function GraphK() {
           }
         }
         else { //if tfFile is a transformation file
-          if (!tfFile.type) {tfFile.type = 'normal';}
+          if (!validType.includes(tfFile.type)) {tfFile.type = 'normal';}
         }
         //must add to the dictionary outside the if/else statement above
         //because if the tfFile is of type pkg, then it is considered a 
@@ -148,6 +149,7 @@ function GraphK() {
       subWindow.close();
       if (transforms) {
         panels.transform.updateTransforms(transforms);
+        panels.routine.updateTransforms(transforms);
         navTree.clear();
         for (let f of transforms.value) {navTree.addToTree(f);}
       }
