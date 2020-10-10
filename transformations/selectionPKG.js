@@ -1,6 +1,6 @@
 "use strict";
 
-export const pkgName = 'Selection';
+export const name = 'Selection';
 export const pkg = [
   { //Interval
     name: 'Interval',

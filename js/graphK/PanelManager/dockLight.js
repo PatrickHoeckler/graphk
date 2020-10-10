@@ -1,9 +1,5 @@
 "use strict";
 
-//    COISAS PARA AJUSTAR NO FUTURO
-//
-//
-
 module.exports = {DockLight};
 
 function DockLight() {
@@ -54,7 +50,12 @@ function DockLight() {
 
   //Private Functions
   function calculateLimits(elem) {
-    let lim = elem.getBoundingClientRect();
+    let lim = {
+      top: elem.offsetTop, left: elem.offsetLeft,
+      height: elem.offsetHeight, width: elem.offsetWidth
+    };
+    lim.bottom = lim.top + lim.height;
+    lim.right = lim.left + lim.width;
     lim.w = lim.width  < 50 ? 0.2 * lim.width  :              20;
     lim.e = lim.width  < 50 ? 0.8 * lim.width  : lim.width  - 20;
     lim.n = lim.height < 50 ? 0.2 * lim.height :              20;

@@ -90,7 +90,8 @@ export const func = function ({order, fc, unit, dt}) {
   b = b.map(d => K * d);
   return [b, a];
 };
-export const type = 'no-plot';
+export const type = 'static';
+export const outputs = {name: 'Coefficients', type: 'points'};
 export const args = [
   {name: 'order', type: 'number', min: 1, step: 1, value: 2},
   {name: 'fc', type: 'number', min: 0, value: 1, tooltip: 'Frequência de corte'},

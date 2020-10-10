@@ -98,7 +98,7 @@ function RoutineStep(stepFormat, x = 0, y = 0) {
         {format: {name: 'Output', type: 'data'}, direction: 1, value: null});
     }
     else {
-      if (format.type !== 'no-plot') {
+      if (format.type !== 'static') {
         parameters.push({
           format: {name: 'Data', type: 'data', keyname: 'data'},
           direction: 1, value: null
@@ -118,7 +118,7 @@ function RoutineStep(stepFormat, x = 0, y = 0) {
       //So this would handle the correct push to the parameters array, and help
       //me remember what is the overral logic of handling a new 'outputs' key.
       //But still there's probably other parts in this object or the stepMaker
-      //object that can't handle a key like this properly. So for the moment
+      //object that can't handle a key like this properly. So for the moment,
       //this if should never enter in effect.
       if (false && format.outputs) {
         for (let i = 0, n = format.outputs.length; i < n; i++) {

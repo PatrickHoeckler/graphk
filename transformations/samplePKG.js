@@ -1,6 +1,6 @@
 "use strict";
 
-export const pkgName = 'Sampling';
+export const name = 'Sampling';
 export const pkg = [
   { //DOWNSAMPLE
     name: 'Downsample',

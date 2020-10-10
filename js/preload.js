@@ -12,9 +12,9 @@ process.once('loaded', () => {
     const {createHash} = require('crypto');
     const {readFileSync} = require('fs');
     const {ipcRenderer} = require('electron');
-    const {GraphK, Mode} = require('./graphK/graphK.js');
+    const GraphK = require('./graphK/graphK.js');
     global.preloaded = {
-      GraphK, Mode, path,
+      GraphK, path,
       loadFile: (filters) => ipcRenderer.invoke('load:file', filters),
       saveFile: (data) => ipcRenderer.invoke('save:file', data),
       saveString: (data, filters) => {

@@ -21,7 +21,7 @@ npm start
 
 ## File types
 This program can load/save files of different types, the current supported formats are the following:
-- [csv, txt](#csv,-txt)
+- [csv, txt](#csv-txt)
 - [JSON](#JSON)
 
 ### csv, txt

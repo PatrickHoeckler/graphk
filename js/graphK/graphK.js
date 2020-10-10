@@ -1,13 +1,10 @@
 "use strict";
 
-//TODO: mudar o type 'no-plot' para 'static' no butterworth e consertar todas as referencias
-//incorretas a 'no-plot' no código. Pois a transformação activTime.js também é 'no-plot' mas
-//ela precisa de dados
-
-const {Mode} = require('./auxiliar/mode.js');
-module.exports = {GraphK, Mode};
+module.exports = GraphK;
 
 const {appendNewElement, defaultCallParent} = require('./auxiliar/auxiliar.js');
+const {makeTransform, makeTransformDir} = require('./auxiliar/transformations.js');
+const {Mode} = require('./auxiliar/mode.js');
 const {Window} = require('./auxiliar/window.js');
 const {Context} = require('./auxiliar/context.js');
 const {NavTree} = require('./auxiliar/navTree.js');
@@ -18,6 +15,10 @@ const {RoutinePanel} = require('./Panels/routinePanel/routinePanel.js');
 const {TransformPanel} = require('./Panels/transformPanel/transformPanel.js');
 const {PropertiesPanel} = require('./Panels/propertiesPanel/propertiesPanel.js');
 const {PanelManager} = require('./PanelManager/panelManager.js');
+
+GraphK.Mode = Mode;
+GraphK.makeTransform = makeTransform;
+GraphK.makeTransformDir = makeTransformDir;
 
 function GraphK() {
   //constants
@@ -64,11 +65,8 @@ function GraphK() {
     node.style.visibility = '';
   }
   this.setTransforms = function (transforms) {
-    const validType = ['normal', 'no-plot', 'scatter', 'static'];
     //This function bellow indexes each transform file to the transformDict
-    //object using the file hash as a key. It also adds default values if
-    //some property was not set in the module file (i.e. the 'type' property
-    //default is 'normal')
+    //object using the file hash as a key.
     (function checkTransforms(tfFolder) {
       for (let tfFile of tfFolder) {
         if (tfFile.value) { //if tfFile is also a folder
@@ -76,9 +74,6 @@ function GraphK() {
           if (tfFile.type === 'pkg') {
             tfFile.value.forEach(tf => tf.pkg = tfFile);
           }
-        }
-        else { //if tfFile is a transformation file
-          if (!validType.includes(tfFile.type)) {tfFile.type = 'normal';}
         }
         //must add to the dictionary outside the if/else statement above
         //because if the tfFile is of type pkg, then it is considered a 

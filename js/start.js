@@ -1,27 +1,5 @@
 "use strict";
 
-
-//    COISAS PARA AJUSTAR NO FUTURO
-// - O programa precisa aceitar mais formatos: tem que ler e salvar em JSON pelo menos.
-//   Tem que salvar em JSON um conjunto de dados que não necessariamente é um array, mas
-//   um objeto contendo diversos tipos de dados. Por exemplo suponha uma curva qualquer
-//   e um conjunto de dados sobre essa curva:
-//      data = {
-//        mean, rms, maxValue, minValue, etc
-//      }
-//   É preciso ter um jeito de criar uma transformação que calcula e retorna esse tipo de
-//   dados, e também é preciso um jeito de salvá-los e carregá-los no futuro (JSON é a
-//   melhor opção que eu vejo no momento).
-//
-// - Adicionar um jeito melhor de checar por erros, principalmente typeError. É difícil por
-//   enquanto checar por vários tipos de uma só vez e dar throw quando encontra algum erro.
-//   A função no arquivo 'graphK.js' chamada graphK.checkType() é uma opção que eu pensei
-//   até o momento, mas ainda não é usada por nenhuma parte do programa. No futuro tentar
-//   implementar algo do tipo para facilitar a detecção de erros. Por enquanto grande parte
-//   das vezes eu estou assumindo que não vai ocorrer nenhum tipo de erro ou estou fazendo
-//   uma checagem simples.
-//
-
 //FIXME: this variable is only in the global scope for debug purposes. Remove on release
 var graphK;
 
@@ -37,7 +15,7 @@ let id = setInterval(function() {
 
 function startProgram() {
   const {
-    GraphK, Mode, path, loadFile, saveFile, saveString,
+    GraphK, path, loadFile, saveFile, saveString,
     getTransformsFiles, onFileAdd, onPanelMenuClick,
     captureImage, calcSHA256
   } = preloaded;
@@ -70,66 +48,56 @@ function startProgram() {
   window.addEventListener('keydown', function (e) {
     if (keyPressed) return;
     keyPressed = true;
-    if (e.keyCode === 16) { //Shift
-      graphK.changeMode(Mode.prototype.DELETE);
+    if (e.key === 'Shift') {
+      graphK.changeMode(GraphK.Mode.prototype.DELETE);
     }
   });
   window.addEventListener('keyup', function (e) {
     keyPressed = false;
-    if (e.keyCode === 16) { //Shift
-      graphK.changeMode(Mode.prototype.NORMAL);
+    if (e.key === 'Shift') {
+      graphK.changeMode(GraphK.Mode.prototype.NORMAL);
     }
-    else if (e.keyCode === 27) { //Escape
+    else if (e.key === 'Escape') {
       //cancels selection if in middle of selecting
-      if (graphK.mode() === Mode.prototype.SELECT) {
+      if (graphK.mode() === GraphK.Mode.prototype.SELECT) {
         graphK.stopDataSelect(true);
       }
     }
   });
 
   function loadTransforms(tfFiles) { return new Promise(resolve => {
-    let transforms = {name: '.', value: []};
-    let loadFail = false;
+    let transforms = GraphK.makeTransformDir('.');
+    let errors = [];
     (function loadDir(transfFolder, folderPath, saveTo) {
       let importPromises = [];
       for (let i = 0; i < transfFolder.length; i++) {
         //if the element corresponds to a directory (is a object containing a value key)
-        if (transfFolder[i].value !== undefined) {
-          let newFolder = [];
-          saveTo.push({name: transfFolder[i].name, value: newFolder, type: 'dir'});
+        if (transfFolder[i].value) {
+          let dir = GraphK.makeTransformDir(transfFolder[i].name);
+          saveTo.push(dir);
           let nextPath = path.join(folderPath, transfFolder[i].name);
-          //loadDir(transfFolder[i].value, nextPath, newFolder);
-          importPromises.push(loadDir(transfFolder[i].value, nextPath, newFolder));
+          importPromises.push(loadDir(transfFolder[i].value, nextPath, dir.value));
         }
         else { //if the element corresponds to a file
           let transformPath = '.\\' + path.join(folderPath, transfFolder[i].name);
           let sha256 = calcSHA256(transformPath);
-          if (!sha256) {loadFail = true; continue;}
+          if (!sha256) {errors.push({name: transformPath, error: 'hash'}); continue;}
           transformPath = transformPath.replace(/\\/g, '/');
-          let impPromise = import(transformPath);
-          impPromise.then(module => {
-            if (Array.isArray(module.pkg)) {
-              let pkgName = module.pkgName ? module.pkgName : path.parse(transformPath).name;
-              let newFolder = [];
-              saveTo.push({name: pkgName, value: newFolder, type: 'pkg', hash: sha256});
-              for (let tf of module.pkg) {newFolder.push(tf);}
-            }
-            else {
-              //must convert ECMAScript module object to normal object so it
-              //can be altered
-              const tf = {};
-              for (let key in module) {tf[key] = module[key];}
-              tf.hash = sha256;
-              saveTo.push(tf);
-            }
-          });
+          let impPromise = import(transformPath)
+          .then(module => {
+            let tf = GraphK.makeTransform(module, sha256);
+            if (tf && !Array.isArray(tf)) {saveTo.push(tf);}
+            else {errors.push({name: transformPath, error:tf});}
+          }).catch(error => errors.push({name: transformPath, error}))
           importPromises.push(impPromise);
         }
       }
       return Promise.all(importPromises);
     })(tfFiles.value, '../transformations', transforms.value)
     .then(() => {
-      if (loadFail) {alert('Error opening some files');}
+      if (errors.length) {
+        alert('Error opening some files');
+      }
       resolve(transforms)
     });
   });}
