@@ -38,6 +38,10 @@ function PanelHolder(...panels) {
   this.isCollapsed = () => collapsed;
   this.collapse = collapse;
   this.uncollapse = uncollapse;
+  this.focusPanel = function(panel) {
+    focusPanel(getPanelId(panel.node()));
+    node.classList.add('active');
+  }
   //Private Functions
   function addPanels(...panels) {
     for (let p of panels) {
@@ -51,6 +55,10 @@ function PanelHolder(...panels) {
     }
   }
   function focusPanel(id) {
+    if (node.classList.contains('collapsed')) {
+      uncollapse();
+      callParent('collapse', {caller: node});
+    }
     if (id === focusedPanelID || !panelList[id]) {return;}
     //remove focused panel from DOM and unfocus its panel name
     if (body.children[0]) {body.children[0].remove();}
@@ -243,10 +251,6 @@ function PanelHolder(...panels) {
         clearTimeout(timeoutId); timeoutId = 0;
         window.removeEventListener('mouseup', onMouseUp);
         focusPanel(getPanelId(target));
-        if (node.classList.contains('collapsed')) {
-          uncollapse();
-          callParent('collapse', {caller: node});
-        }
       }
     });
   })();

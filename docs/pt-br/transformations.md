@@ -61,7 +61,7 @@ A referência completa de chaves para uma transformação é dada abaixo:
   + `option` (Object | Object[]) (Opcional) - Afeta apenas argumentos de tipo `select` e deve ser definido se esse for o caso. Define as opções para o menu *drop-down*. As chaves válidas são:
     + `name` String - Define o nome da opção mostrada ao usuário, é também o valor do argumento se a opção for selecionada.
     + `tooltip` String (Opcional) - Descrição para mostrar quando o usuário mover o mouse sobre a opção.
-  + `optional` Boolean (Opcional) - Indica se o argumento pode ser deixado em branco. Valor padrão `false`.
+  + `optional` Boolean (Opcional) - Afeta apenas argumentos do tipo `number` ou `data`. Indica se o argumento pode ser deixado em branco. Valor padrão `false`.
   + `max` Number (Opcional) - Afeta apenas argumentos do tipo `number`. Define o valor máximo permitido para o número. Se omitido, não será considerado nenhum valor máximo.
   + `min` Number (Opcional) - Afeta apenas argumentos do tipo `number`. Define o valor mínimo permitido para o número. Se omitido, não será considerado nenhum valor mínimo.
   + `step` Number (Opcional) - Afeta apenas argumentos do tipo `number`. Define a granularidade permitida para o número. Se omitido, não será considerada nenhuma restrição de granularidade.

@@ -36,6 +36,9 @@
   background-color: var(--panel-color);
   flex-grow: 1;
 }
+.routine-maker .nav-tree .folder {--icon-uncollapsed:"\1F5C1"; --icon-collapsed  :"\1F5C0";}
+.routine-maker .nav-tree .folder.pkg {--icon-uncollapsed:"\25EB"; --icon-collapsed  :"\25F0";}
+.routine-maker .nav-tree .leaf-node {--icon:"\2056";}
 .routine-maker .routine-design {
   user-select: none;
   border: var(--design-region-border);

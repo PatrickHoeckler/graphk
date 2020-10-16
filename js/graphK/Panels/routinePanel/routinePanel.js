@@ -27,7 +27,7 @@ function RoutinePanel(modeObj) {
   //Public Attributes
   //Private Properties
   var pContents, toolbar;
-  var routineSteps, transformDict;
+  var transforms, transformDict;
   var callParent = defaultCallParent;
 
   //Public Methods
@@ -38,7 +38,7 @@ function RoutinePanel(modeObj) {
     callParent = executor;
   }
   this.updateTransforms = function(newTransforms, dictionary) {
-    routineSteps = RoutineMaker.transformsToSteps(newTransforms);
+    transforms = newTransforms;
     if (dictionary) {transformDict = dictionary;}
   }
 
@@ -103,7 +103,7 @@ function RoutinePanel(modeObj) {
     callParent('full-window', {title: `Edit Routine - ${routine.name}`})
     .catch(() => {return;})
     .then(({node, stop}) => {
-      RoutineMaker.editRoutine(routine, routineSteps, node)
+      RoutineMaker.editRoutine(routine, transforms, node)
       .then((newRoutine) => {
         if (newRoutine) {
           rNode[_routineData] = newRoutine;
@@ -259,7 +259,7 @@ function RoutinePanel(modeObj) {
     });
     pContents.addEventListener('dblclick', function(e) {
       if (!mode.is(mode.DELETE)) {return;}
-      removeInRoutine(e.target);
+      removeRoutine(e.target);
     });
     pContents.addEventListener('contextmenu', ({x, y, target}) => {
       let elem = getContainingElement(target);

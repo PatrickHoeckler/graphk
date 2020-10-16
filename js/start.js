@@ -76,7 +76,7 @@ function startProgram() {
           let dir = GraphK.makeTransformDir(transfFolder[i].name);
           saveTo.push(dir);
           let nextPath = path.join(folderPath, transfFolder[i].name);
-          importPromises.push(loadDir(transfFolder[i].value, nextPath, dir.value));
+          importPromises.push(loadDir(transfFolder[i].value, nextPath, dir.contents));
         }
         else { //if the element corresponds to a file
           let transformPath = '.\\' + path.join(folderPath, transfFolder[i].name);
@@ -93,7 +93,7 @@ function startProgram() {
         }
       }
       return Promise.all(importPromises);
-    })(tfFiles.value, '../transformations', transforms.value)
+    })(tfFiles.value, '../transformations', transforms.contents)
     .then(() => {
       if (errors.length) {
         alert('Error opening some files');

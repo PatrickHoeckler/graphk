@@ -13,8 +13,7 @@ function Panel(_name = 'Panel', buttons = []) {
   var name;
   //Public Methods
   this.node = () => node;
-  this.name = () => name;
-  this.changeName = (_name) => name = _name;
+  this.name = (newName) => newName ? name = newName : name;
 
   //Initialize Object
   (function() {

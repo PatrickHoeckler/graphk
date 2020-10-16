@@ -55,23 +55,26 @@
 .graphK .button-wrapper>button:focus {outline: none;}
 
 /*Transform Selector*/
-.graphK .transform-selector {
+.transform-selector {
   display: flex; flex-direction: column;
   width: 100%; height: 100%;
 }
-.transform-selector .checkbox {
-  display: flex; box-sizing: border-box;
-  align-items: center; justify-content: center;
+.transform-selector .nav-tree .leaf-node::before,
+.transform-selector .nav-tree .folder-node::before {
+  content: '';
+  min-width: 0.3em; min-height: 0.3em;
+  border: medium solid whitesmoke;
   background-color: whitesmoke;
-  min-width: 10px; height: 10px;
-  border-radius: 1px;
-  margin-right: 5px;
+  border-radius: 0.5em;
+  margin-right: 0.5em;
 }
-.transform-selector .checkbox:hover {background-color: rgb(200,200, 200);}
-.transform-selector .checkbox.checked::before {
-  content: ""; height: 0; width: 0;
-  border: 2px solid rgb(70,70,70);
+.transform-selector .nav-tree .leaf-node.checked::before,
+.transform-selector .nav-tree .folder-node.checked::before {
+  background-color: black;
 }
+.transform-selector .nav-tree .folder {--icon-uncollapsed:"\1F5C1"; --icon-collapsed  :"\1F5C0";}
+.transform-selector .nav-tree .folder.pkg {--icon-uncollapsed:"\25EB"; --icon-collapsed  :"\25F0";}
+.transform-selector .nav-tree .leaf-node>.node-icon::before {display: none;}
 .transform-selector>.tree-wrapper { 
   border-color: var(--window-frame-color);
   border-width: 2px;
@@ -99,10 +102,8 @@
 }
 .arg-wrapper {
   box-sizing: border-box;
-  padding: 16px;
-  padding-left: 0;
-  display: flex;
-  flex-direction: row;
+  padding: 1em; padding-left: 0;
+  display: flex; flex-direction: row;
   width: 100%;
 }
 .arg-wrapper .arg-text {
@@ -119,7 +120,17 @@
   flex-grow: 1;
   transition: background-color 300ms;
 }
-
 .arg-wrapper .arg-input.warning {
   background-color: rgb(255, 100, 100);
 }
+label.arg-input {display: flex;}
+label.arg-input > input[type="checkbox"] {display: none;}
+label.arg-input > input[type="checkbox"] + span.checkbox {
+  color: black; width: 100%; text-align: center;
+  background-color: whitesmoke;
+  opacity: 0.9;
+  border-radius: 0.3em;
+}
+label.arg-input > input[type="checkbox"]:checked + span.checkbox {opacity: 1;}
+label.arg-input > input[type="checkbox"]:checked + span.checkbox:after {content: 'X';}
+

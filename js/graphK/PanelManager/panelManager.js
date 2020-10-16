@@ -51,6 +51,23 @@ function PanelManager(...panels) {
       if (container) {container.removePanel(panel); fitPanels();}
     }
   }
+  /**
+   * Focus on a single panel or, if no panel is given, removes the focus on any
+   * panel and returns the panel region to normal.
+   * @param {Panel=} panel - Panel to focus
+   */
+  this.focusPanel = function(panel) {
+    if (!panel) {
+      node.classList.remove('inactive');
+      let active = Array.from(node.getElementsByClassName('active'));
+      for (let elem of active) {elem.classList.remove('active');}
+      return;
+    }
+    let container = containerList.find(c => c.contains(panel));
+    if (!container) {return;}
+    node.classList.add('inactive');
+    container.focusPanel(panel);
+  }
   //Private Functions
   function containsPanel(panel) {
     return containerList.some(c => c.contains(panel));

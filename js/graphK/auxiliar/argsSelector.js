@@ -1,158 +1,117 @@
 "use strict";
 
-//    COISAS PARA AJUSTAR NO FUTURO
-//
-//
+module.exports = {selectArguments};
 
-module.exports = {ArgsSelector};
-
-const {appendNewElement, defaultCallParent} = require('./auxiliar.js');
+const {appendNewElement, createButtonWrapper} = require('./auxiliar.js');
 const {Window} = require('./window.js');
-function ArgsSelector(argsFormat, parent, title = 'Select Arguments') {
-  //Private Properties
-  var argWindow, argsBox, bWrapper;
-  var callParent = defaultCallParent;
+const _argData = Symbol('argsSelector.argData');
+const _argFormat = Symbol('argsSelector.argFormat');
 
-  //Public Methods
-  this.onCallParent = function (executor = defaultCallParent) {
-    if (typeof(executor) !== 'function') { throw new TypeError(
-      `Expected a function for the 'executor' argument. Got type ${typeof(executor)}`
-    );}
-    callParent = executor;
-  }
-  this.close = destroy;
-  this.recreate = recreate;
-
-  //Private Functions
-  function destroy() {
-    if (argWindow) {
-      argWindow.close();
-      let [confirm, cancel] = bWrapper.children;
-      confirm.remove('click', confirmSelection);
-      cancel.remove('click', cancelSelection);
+function selectArguments(title, transform, parent, getDataCallback) {
+return new Promise((resolve) => {
+  if (!transform.args) {return resolve({args: {}});}
+  const checkArgs = transform.checkArgs;
+  const argWindow = new Window({
+    width: 400, height:  Math.min(500, 90 + 60 * transform.args.length),
+    frame: !!title, title: title, frameButtons: [], parent
+  });
+  const container = appendNewElement(argWindow.contentNode(), 'div', 'args-selector');
+  const argsBox = appendNewElement(container, 'div', 'args-box');
+  const bWrapper = createButtonWrapper(['Confirm', 'Cancel'], button => {
+    let resolveValue = null;
+    if (button === 'Confirm') {
+      resolveValue = confirmSelection(argsBox, checkArgs);
+      if (!resolveValue) {return;}
     }
-    argWindow = bWrapper = argsBox = null;
-  }
-  function recreate(argsFormat, parent, title) {
-    //ERROR CHECKING
-    if (!Array.isArray(argsFormat) || !argsFormat.length) {throw new TypeError(
-      "Expected an array containing at least one value for the 'argsFormat' argument")
-    ;} 
-    else if (!(parent instanceof HTMLElement)) {throw new TypeError(
-      'Expected an HTMLElement as a parent for the ArgsSelector main node element')
-    ;}
+    container.style.pointerEvents = 'none';
+    argWindow.close();
+    resolve(resolveValue);
+  });
+  container.appendChild(bWrapper);
+  argsBox.addEventListener('transitionend', ({target}) => target.classList.remove('warning'));
 
-    //Creating main HTMLElements
-    destroy(); //Destroying any old element if any
-    let container = appendNewElement(null, 'div', 'args-selector');
-    argsBox = appendNewElement(container, 'div', 'args-box');
-    bWrapper = appendNewElement(container, 'div', 'button-wrapper');
-    let confirm = appendNewElement(bWrapper, 'button');
-    let cancel  = appendNewElement(bWrapper, 'button');
-    confirm.innerHTML = 'Confirm';
-    cancel.innerHTML = 'Cancel';
-    //adding buttons functionality
-    confirm.addEventListener('click', confirmSelection);
-    cancel.addEventListener('click', cancelSelection);
-    //removes warning class at the end of transition,
-    //effectively creating a single pulse warning
-    argsBox.addEventListener('transitionend', ({target}) => target.classList.remove('warning'));
-    argWindow = new Window({
-      width: 400, height:  90 + 60 * argsFormat.length,
-      frame: !!title, title: title, frameButtons: [],
-      parent, content: container
-    });
-
-    //Creating argument-specific HTMLElements
-    for (let i = 0; i < argsFormat.length; i++) {
-      let {name, type, value, optional, tooltip, option} = argsFormat[i];
-      //checking type against valid values.
-      //If invalid value is given, defaults to 'number'
-      if (!['number', 'string', 'select', 'data'].includes(type)) {type = 'number';}
-      //Creating the elements for the argument input
-      let argWrapper = appendNewElement(argsBox, 'div', 'arg-wrapper');
-      let argText = appendNewElement(argWrapper, 'div', 'arg-text');
-      let argInput = appendNewElement(argWrapper, 
-        type === 'select' ? 'select' : type === 'data'   ? 'button' : 'input',
-        'arg-input'
-      );
-
-      //configuring argText
-      argText.innerHTML = typeof(name) === 'string' ? name : 'N/A';
-      if (tooltip) {
-        argText.setAttribute('title', typeof(tooltip) === 'string' ? tooltip : 'Tooltip invalido');
-      }
-      //configuring argInput
-      if (type === 'select') {
-        for (let i = 0; i < option.length; i++) {
-          let optionElem = appendNewElement(argInput, 'option');
-          optionElem.innerHTML = option[i].name;
-          optionElem.setAttribute('value', option[i].name);
-          if (!option[i].tooltip) {
-            optionElem.setAttribute('title', typeof(tooltip) === 'string' ? 
-              option[i].tooltip : 'Tooltip invalido'
-            );
+  for (let argument of transform.args) {
+    let argWrapper = appendNewElement(argsBox, 'div', 'arg-wrapper');
+    let argText = appendNewElement(argWrapper, 'div', 'arg-text');
+    argText.innerHTML = argument.name;
+    if (argument.tooltip) {argText.setAttribute('title', argument.tooltip);}
+    let argInput = createInputElement(argument);
+    argWrapper.appendChild(argInput);
+    if (argument.type === 'data') {
+      argInput.addEventListener('click', ({currentTarget}) => {
+        argWindow.hide();
+        getDataCallback().then(({dataHandler, canceled}) => {
+          argWindow.show();
+          if (canceled) {
+            currentTarget[_argData] = null;
+            currentTarget.innerHTML = 'Select File' + 
+              (currentTarget[_argFormat].optional ? ' (Optional)' : '');
           }
-        }
-      }
-      else if (type === 'data') {
-        argInput.innerHTML = 'Select File';
-        argInput.addEventListener('click', ({currentTarget}) => {
-          argWindow.hide();
-          callParent('get-data').then(({dataHandler, path, canceled}) => {
-            argWindow.show();
-            if (canceled) {return;}
+          else {
             currentTarget.innerHTML = dataHandler.name;
-            //path is given as an array. The window that takes the arguments only accepts
-            //values as string, so we stringify the array. Later we parse the values back
-            currentTarget.value = JSON.stringify(path);
-          });
+            currentTarget[_argData] = dataHandler.isHierarchy ?
+              dataHandler.getLevel(0).data : dataHandler.value;
+          }
         });
-      }
-      else { //(type === 'number' || type === 'string')
-        argInput.setAttribute('type', type === 'string' ? 'text' : 'number');
-        if (!value) {argInput.setAttribute('value', value);}
-        if (optional) {
-          argInput.setAttribute('placeholder', 'Optional');
-          argInput.setAttribute('title', 'This attribute is optional');
-        }
-      }
+      });
     }
   }
-  function confirmSelection() {
-    let args = {};
-    let inputEmpty = false;
-    for (let argWrapper of argsBox.children) {
-      let [argText, argInput] = argWrapper.children;
-      let name = argText.textContent;
-      let value = argInput.value;
-      //checks if value is not set
-      if (value === '') {
-        //if value is not optional
-        if (argInput.getAttribute('placeholder') === null) {
-          argInput.classList.add('warning');
-          inputEmpty = true;
-        }
-        continue;
-      }
-      if (argInput.getAttribute('type') === 'number') {args[name] = Number(value);}
-      else {args[name] = value;}
-    }
-    if (inputEmpty) {return;}
-    //disables buttons to prevent another click
-    let [confirm, cancel] = bWrapper.children;
-    confirm.disabled = true;
-    cancel.disabled = true;
-    callParent('end-selection', {args});
-  }
-  function cancelSelection() {
-    //disables buttons to prevent another click
-    let [confirm, cancel] = bWrapper.children;
-    confirm.disabled = true;
-    cancel.disabled = true;
-    callParent('end-selection', {canceled: true});
-  }
+});}
 
-  //Initialize Object
-  (function () {recreate(argsFormat, parent, title);})();
+function createInputElement(argument) {
+  let argInput;
+  if (argument.type === 'number') {
+    argInput = appendNewElement(null, 'input', 'arg-input');
+    argInput.setAttribute('type', 'number');
+    ['value', 'step', 'min', 'max'].forEach(key => {
+      if (argument[key] !== undefined) {argInput.setAttribute(key, argument[key]);}
+    })
+    if (argument.optional) {argInput.setAttribute('placeholder', 'Optional');}
+  }
+  if (argument.type === 'select') {
+    argInput = appendNewElement(null, 'select', 'arg-input');
+    for (let option of argument.option) {
+      let optionElem = appendNewElement(argInput, 'option');
+      optionElem.setAttribute('value', optionElem.innerHTML = option.name);
+      if (option.tooltip) {optionElem.setAttribute('title', option.tooltip);}
+    }
+    if (argument.value) {argInput.value = argument.value;}
+  }
+  else if (argument.type === 'checkbox') {
+    argInput = appendNewElement(null, 'label', 'arg-input');
+    let checkbox = appendNewElement(argInput, 'input');
+    checkbox.setAttribute('type', 'checkbox');
+    checkbox.checked = argument.value;
+    appendNewElement(argInput, 'span', 'checkbox');
+  }
+  else if (argument.type === 'data') {
+    argInput = appendNewElement(null, 'button', 'arg-input');
+    argInput.innerHTML = 'Select File' + (argument.optional ? ' (Optional)' : '');
+    argInput[_argData] = argument.value;
+  }
+  if (argument.optional) {
+    argInput.setAttribute('title', 'This attribute is optional');
+  }
+  argInput[_argFormat] = argument;
+  return argInput;
+}
+
+function confirmSelection(argsBox, checkArgs) {
+  let args = {};
+  let invalid = false;
+  for (let argWrapper of argsBox.children) {
+    let argInput = argWrapper.children[1];
+    let argument = argInput[_argFormat];
+    let value = argument.type === 'data' ? argInput[_argData] :
+      argument.type === 'checkbox' ? argInput.children[0].checked : argInput.value;
+    if (!value && value !== false) {
+      if (argument.optional) {continue;}
+      argInput.classList.add('warning');
+      invalid = true;
+    }
+    if (argument.type === 'number') {args[argument.keyname] = Number(value);}
+    else {args[argument.keyname] = value;}
+  }
+  if (checkArgs) {invalid = checkArgs(args);}
+  return invalid ? null : args;
 }

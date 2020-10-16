@@ -12,15 +12,21 @@ module.exports = {
   defaultCallParent: () => Promise.reject(new Error('callParent not set'))
 }
 
-//This function creates an element of a given tagName and with a given class, and appends
-//it to the given parentElem. The element created is then returned. If 'parentElem === null'
-//then the function will only return the created element without appending it to anything
-function appendNewElement(parentElem = HTMLElement.prototype, tagName = '', className = '') {
+/**
+ * Creates an element of a given tagName and with a given class, and appends it
+ * to the given parent. If 'parent is `null` then the function will only return
+ * the created element without appending it to anything.
+ * @param {HTMLElement?} parent - The element to append the new element
+ * @param {string} tagName - The HTML tag name for the new element
+ * @param {string=} className - The class name of the new element
+ * @return {HTMLElement} The created element
+*/
+function appendNewElement(parent, tagName, className) {
   let elem = document.createElement(tagName);
   if (className) {elem.className = className;}
-  if (parentElem !== null) {
-    try {parentElem.appendChild(elem);}
-    catch (err) {throw new Error("Could not append to given 'parentElement'");}
+  if (parent !== null) {
+    try {parent.appendChild(elem);}
+    catch (err) {throw new Error(`Could not append to given 'parent'`);}
   }
   return elem;
 }
@@ -112,23 +118,23 @@ function checkType(type, obj) {
 }
 
 /**
- * Creates a div element of class 'button-wrapper' that contains
- * the buttons given and creates a click handler to handle the
- * button clicks by calling the callbacks given
+ * Creates all the HTMLElements for a button wrapper with the given buttons and
+ * sets the event listeners for handling clicks.
  * @param {string[]} buttons - array of button names to add to the wrapper
- * @param {(button: string) => void} click - click callback informing the button clicked
+ * @param {(button: string) => void} click - Callback to be called when a
+ * button is clicked, is called with the button name as only argument.
  * @returns {HTMLDivElement} the button wrapper element
  */
 function createButtonWrapper(buttons, click) {
-  const bw = document.createElement('div');
-  bw.className = 'button-wrapper';
+  const bWrapper = document.createElement('div');
+  bWrapper.className = 'button-wrapper';
   for (let name of buttons) {
     const button = document.createElement('button');
     button.innerHTML = name;
-    bw.appendChild(button);
+    bWrapper.appendChild(button);
   }
-  bw.addEventListener('click', function({currentTarget, target}) {
+  bWrapper.addEventListener('click', function({currentTarget, target}) {
     if (target !== currentTarget) {click(target.innerHTML);}
   });
-  return bw;
+  return bWrapper;
 }

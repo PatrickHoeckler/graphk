@@ -6,15 +6,27 @@
   user-select: none;
   overflow: hidden;
 }
+.panel-region.inactive {pointer-events: none;}
+.panel-region.inactive .panel-holder {opacity: 0.3;}
+.panel-region.inactive .panel-holder::after {
+  content: ''; position: absolute;
+  pointer-events: all;
+  width: 100%; height: 100%;
+}
+.panel-region.inactive .panel-holder.active {opacity: 1;}
+.panel-region.inactive .panel-holder.active::after {content: none;}
+.panel-region.inactive .panel-holder.active .panel>.panel-body {pointer-events: all;}
+
 .panel-container {
   padding: 0px 1px;
   overflow: hidden;
   box-sizing: border-box;
   display: flex; flex-direction: column;
 }
-
 .panel-container.undocked {position: absolute; padding: 0px;}
+
 .panel-holder {
+  position: relative;
   background-color: var(--panel-color);
   border-color: var(--panel-frame-color);
   border-style: solid; border-width: 1px;
@@ -27,11 +39,9 @@
   background-color: var(--panel-frame-color);
   height: 20px; line-height: 20px; font-size: 14px;
   display: flex; flex-direction: row;
-  pointer-events: none;
 }
 .holder-frame > .panel-name {
   padding: 0px 8px;
-  pointer-events: all;
   position: relative;
   background-color: inherit;
   white-space: nowrap;
@@ -64,15 +74,12 @@
   align-items: center;
   font-size: 15px;
   overflow: hidden;
-  pointer-events: none;
 }
-.panel-toolbar * {pointer-events: none;}
 .panel-button{
   width: var(--toolbar-height, 20px);
   height: var(--toolbar-height, 20px);
   display: flex;
   align-items: center; justify-content: center;
-  pointer-events: all;
 }
 .panel-button:hover, .panel-button:active, .panel-button.pressed {
   background-color: var(--panel-hover-color);
@@ -82,6 +89,7 @@
 }
 .panel-button:active, .panel-button.pressed {outline-style: inset;}
 .panel-button.inactive {pointer-events: none; opacity: 0.3;}
+.panel-button > span {pointer-events: none;}
 
 /*Resizers*/
 .ns-resize {cursor: ns-resize; height: 8px; margin: -4px 0px; z-index: 1;}
@@ -103,10 +111,8 @@
 
 
 
-
 /*************TRANSFORM PANEL****************/
 .transform-panel {display: flex;}
-.transform-panel > .nav-tree{flex-grow: 1;}
 .transform-panel .rename, .routine-panel .rename {
   font-size: inherit; font-family: inherit; color: inherit;
   height: 100%; width: 0px; flex-grow: 1;
@@ -115,6 +121,14 @@
   border: none;
   padding: 0px;
 }
+.transform-panel>.nav-tree {flex-grow: 1;}
+.transform-panel>.nav-tree .folder {--icon-uncollapsed:"\1F5C1"; --icon-collapsed  :"\1F5C0";}
+.transform-panel>.nav-tree .folder.pkg {--icon-uncollapsed:"\25EB"; --icon-collapsed  :"\25F0";}
+.transform-panel>.nav-tree .folder.empty {--icon-uncollapsed:"\1F5CB";}
+.transform-panel>.nav-tree .leaf-node        {--icon:"\25FB";}
+.transform-panel>.nav-tree .leaf-node.ready  {--icon:"\25FC";}
+.transform-panel>.nav-tree .leaf-node.broken {--icon:"\2715";}
+
 
 /*************CHART PANEL****************/
 .chart-panel {padding: 4px;}

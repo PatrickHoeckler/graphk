@@ -1,6 +1,6 @@
 "use strict";
 
-module.exports = {makeTransform, makeTransformDir}
+module.exports = {makeTransform, makeTransformDir};
 
 //The parseProperties function uses this structure to check for erros and fill
 //default values in a transformation object. This is a very easy way to add new
@@ -118,8 +118,9 @@ const structure = [
 
       {
         key: 'optional', type: 'boolean', optional: true,
-        condition: (_, {optional}) => {
-          return typeof optional === 'boolean' && !optional;
+        condition: (parsed, {optional}) => {
+          return (parsed.type !== 'number' && parsed.type !== 'data') || 
+            (typeof optional === 'boolean' && !optional);
         }
       },
       {
@@ -257,9 +258,66 @@ function makeTransform(properties, hash) {
 /**
  * Creates a object corresponding with a directory to hold transformations
  * @param {string} dirName - name of directory
- * @return {object} transformation directory object, its `value` key is an
- * array holding the contents of the directory
+ * @return {object} transformation directory object, its `content` key is an
+ * array that should hold all the folder contents
  */
 function makeTransformDir(dirName) {
-  return {name: dirName, type: 'dir', value: []};
+  return {name: dirName, type: 'dir', contents: []};
 }
+
+
+module.exports.calculateTransformSafely = (function () {
+  var maliciousFunction;
+  function reverseMaliciousChanges(mutations) {
+    maliciousFunction = true;
+    for (let mutation of mutations) {
+      if (mutation.type === 'attributes') {
+        mutation.target.setAttribute(mutation.attributeName, mutation.oldValue);
+      }
+      else if (mutation.type === 'characterData') {
+        mutation.target.innerHTML = mutation.oldValue;
+      }
+      else if (mutation.type === 'childList') {
+        for (let elem of mutation.addedNodes) {elem.remove();}
+        for (let elem of mutation.removedNodes) {
+          mutation.target.insertBefore(elem, mutation.nextSibling);
+        }
+      }
+    }
+    throw null;
+  }
+  
+  function calculateTransformSafely(func, args) {
+    const observer = new MutationObserver(reverseMaliciousChanges);
+    maliciousFunction = false;
+    const blocked = {
+      alert, setTimeout, setInterval, clearTimeout, clearInterval,
+      MutationObserver, Promise
+    };
+    function malicious() {maliciousFunction = true; throw null;};
+    Object.keys(blocked).forEach(key => window[key] = malicious);
+    observer.observe(document.documentElement, {
+      attributes: true, attributeOldValue: true,
+      characterData: true, characterDataOldValue: true,
+      childList: true, subtree: true
+    });
+
+    let value;
+    try {try {value = func(args);}
+    finally {
+      Object.keys(blocked).forEach(key => window[key] = blocked[key]);
+      let queue = observer.takeRecords();
+      observer.disconnect();
+      if (queue.length) {try {reverseMaliciousChanges(queue);} catch{}}
+      if (maliciousFunction) {alert(
+        'WARNING: This transformation tried to breach this computer security ' +
+        'by using functions not allowed by this program. No damage was done, ' +
+        "but it's recommended that this transformation file and any other " + 
+        'coming from the same origin be removed from this computer.'
+      ); return null;}
+    }} catch (err) {throw err;}
+    return value;
+  }
+
+  return calculateTransformSafely;
+})();

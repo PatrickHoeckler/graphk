@@ -6,7 +6,6 @@ const {
   appendNewElement, createResizeHandler, createButtonWrapper
 } = require('../../auxiliar/auxiliar.js');
 const {Routine} = require('./routine.js');
-const {RoutineStep} = require('./routineStep.js');
 const {StepMaker} = require('./stepMaker.js');
 const {NavTree} = require('../../auxiliar/navTree.js');
 const d3 = require('d3');
@@ -14,12 +13,12 @@ const d3 = require('d3');
 /**
  * This constructor creates all the HTMLElements and event listeners necessary
  * to display a Routine object and allow for editing it, this means: adding;
- * removing; and connecting RoutineSteps.
+ * removing; and connecting RoutineSteps (the transformations).
  * @constructor
- * @param {Routine} startRoutine 
- * @param {Array} routineSteps 
+ * @param {Routine} startRoutine
+ * @param {Array} transforms 
  */
-function RoutineMaker(startRoutine, routineSteps) {
+function RoutineMaker(startRoutine, transforms) {
   //Constants
   const node = appendNewElement(null, 'div', 'routine-maker');
   const svg = d3.create('svg:svg');
@@ -43,9 +42,11 @@ function RoutineMaker(startRoutine, routineSteps) {
     );}
     confirmCallback = callback;
   }
-  this.setRoutineSteps = function(routineSteps) {
+  this.setRoutineSteps = function(transforms) {
     navTree.clear();
-    for (let step of routineSteps) {navTree.addToTree(step);}
+    for (let tf of transforms.value) {
+      navTree.addToTree(tf, (content, isLeaf) => isLeaf ? content : null);
+    }
   }
   //Private Functions
   function createGrid() {
@@ -147,7 +148,7 @@ function RoutineMaker(startRoutine, routineSteps) {
       designRegion.append(() => stepGroup.node());
       designRegion.append(() => frontGroup.attr('class', 'connect-group').node());
       buildRoutine();
-      this.setRoutineSteps(routineSteps);
+      this.setRoutineSteps(transforms);
     }).call(this);
 
     svg.call(zoom);
@@ -168,6 +169,7 @@ function RoutineMaker(startRoutine, routineSteps) {
         if (data) {addStep(data);}
       });
       control.addEventListener('mouseup', ({button}) => {
+        //TODO: remove the logs, and check if this listener is even needed
         if (button !== 1) {return;}
         let {error, stepsUsed} = routine.checkValidity();
         if (error) {console.warn(Routine.getErrorMsg(error));}
@@ -183,22 +185,21 @@ function RoutineMaker(startRoutine, routineSteps) {
 
 /**
  * Creates a RoutineMaker object to edit the routine parameter given the
- * routineSteps and appends the RoutineMaker node to the appendToElem
+ * transforms and appends the RoutineMaker node to the appendToElem
  * HTMLElement paramenter. It returns a promise that will resolve with the
  * edited routine when the confirm routine button inside the RoutineMaker
  * is clicked.
  * @param {Routine} routine - Routine oject to be represented and edited
- * @param {Array} routineSteps - An array of steps that can be added to the
- * routine.
+ * @param {Array} transforms - The array of transformations loaded
  * @param {HTMLElement} appendToElem - HTMLElement to append the RoutineMaker
  * element.
  * @returns {Promise} Promise will resolve with the edited Routine when the
  * RoutineMaker calls its confirmCallback, i.e. when the confirm button is
  * clicked by the user.
  */
-RoutineMaker.editRoutine = function(routine, routineSteps, appendToElem) {
+RoutineMaker.editRoutine = function(routine, transforms, appendToElem) {
 return new Promise((resolve) => {
-  const routineMaker = new RoutineMaker(routine, routineSteps);
+  const routineMaker = new RoutineMaker(routine, transforms);
   routineMaker.onConfirm(function(routine) {
     if (routine === null) {return resolve(null);}
     let {error, stepsUsed} = routine.checkValidity();

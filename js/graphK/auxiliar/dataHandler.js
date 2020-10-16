@@ -97,6 +97,11 @@ Object.defineProperties(DataHandler.prototype, {
   constructor: {value: DataHandler, enumerable: false},
   getRange: {enumerable: false, value: function(x0, x1) {
     if (!this.isHierarchy) {return null;}
+    let dataLevel = this.value[0];
+    let lastX = dataLevel.data[dataLevel.data.length - 1][0];
+    if (x0 < dataLevel.data[0][0]) {x0 = dataLevel.data[0][0];}
+    if (x1 > lastX) {x1 = lastX;}
+    
     //interval in a given level contains the following number of points:
     //  nPoints = (2 + Math.floor(interval / dataLevel.dx)) * 
     //    (level === 0 ? 1 : 2)
@@ -104,7 +109,6 @@ Object.defineProperties(DataHandler.prototype, {
     //the range
     const interval = x1 - x0;
     //Check if top level can represent data
-    let dataLevel = this.value[0];
     let nPoints = 2 + Math.floor(interval / dataLevel.dx);
     if (DataHandler.MAX_ELEMENTS < nPoints) {
       for (let i = 1, n = this.value.length; i < n; i++) {
@@ -113,19 +117,18 @@ Object.defineProperties(DataHandler.prototype, {
         if (nPoints <= DataHandler.MAX_ELEMENTS) {break;}
       }
     }
-    const start = Math.max(Math.floor((x0 - dataLevel.data[0][0]) / dataLevel.dx), 0);
-    const end = 1 + Math.min(
-      Math.ceil((x1 - dataLevel.data[0][0]) / dataLevel.dx), dataLevel.data.length
-    );
+    const start = Math.floor((x0 - dataLevel.data[0][0]) / dataLevel.dx);
+    const end = 1 + Math.ceil((x1 - dataLevel.data[0][0]) / dataLevel.dx);
     return dataLevel.data.slice(start, end)
   }},
   getRangeAtLevel: {enumerable: false, value: function (x0, x1, level) {
     let dataLevel;
     if (!this.isHierarchy || !(dataLevel = this.value[level])) {return null;}
-    const start = Math.max(Math.floor((x0 - dataLevel.data[0][0]) / dataLevel.dx), 0);
-    const end = 1 + Math.min(
-      Math.ceil((x1 - dataLevel.data[0][0]) / dataLevel.dx), dataLevel.data.length
-    );
+    let lastX = dataLevel.data[dataLevel.data.length - 1][0];
+    if (x0 < dataLevel.data[0][0]) {x0 = dataLevel.data[0][0];}
+    if (x1 > lastX) {x1 = lastX;}
+    const start = Math.floor((x0 - dataLevel.data[0][0]) / dataLevel.dx);
+    const end = 1 + Math.ceil((x1 - dataLevel.data[0][0]) / dataLevel.dx);
     return dataLevel.data.slice(start, end)
   }},
   getLevel: {enumerable: false, value: function (level) {

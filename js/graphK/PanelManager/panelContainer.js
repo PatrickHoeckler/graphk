@@ -31,6 +31,10 @@ function PanelContainer(...panels) {
   }
   this.node = () => node;
   this.contains = panel => holderList.some(h => h.contains(panel));
+  this.focusPanel = function(panel) {
+    let holder = holderList.find(h => h.contains(panel));
+    if (holder) {holder.focusPanel(panel);}
+  }
   this.removePanel = function(panel) {
     let holder = holderList.find(h => h.contains(panel));
     if (holder) {holder.removePanel(panel);}

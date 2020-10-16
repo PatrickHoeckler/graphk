@@ -1,11 +1,12 @@
 "use strict";
 
 module.exports = {TransformPanel};
-const {appendNewElement, defaultCallParent} = require('../../auxiliar/auxiliar.js');
+const {defaultCallParent} = require('../../auxiliar/auxiliar.js');
+const {calculateTransformSafely} = require('../../auxiliar/transformations.js');
 const {NavTree} = require('../../auxiliar/navTree.js');
 const {Panel} = require('../../PanelManager/panel.js');
-const {FileManager} = require('./fileManager.js');
-const { DataHandler } = require('../../auxiliar/dataHandler.js');
+const FileManager = require('./fileManager.js');
+const {DataHandler} = require('../../auxiliar/dataHandler.js');
 
 function TransformPanel(modeObj) {
   if (modeObj === null || typeof(modeObj) !== 'object') {throw new Error(
@@ -16,12 +17,12 @@ function TransformPanel(modeObj) {
   const mode = modeObj;
   const filenameFormat = /^[^\\/?<>:|\"*^]{1,128}$/;
   const navTree = new NavTree();
-  const fileManager = new FileManager();
   const selectedElems = [];
   //Public Attributes
 
   //Private Properties
   var toolbar, toolbarLevel;
+  var transforms;
   var mouseOverElem; //used to change highlight on change of mode
   var callParent = defaultCallParent;
   var selectTreeElem = () => null;
@@ -33,208 +34,183 @@ function TransformPanel(modeObj) {
     );}
     callParent = executor;
   }
-  this.renameFile = renameFile;
-  this.deleteFromTree = deleteFromTree;
-  this.getDataFromPath = fileManager.getDataFromPath;
-  this.getTransformFromPath = fileManager.getTransformFromPath;
-  this.getDataFromTreeElement = (treeElem) => {
-    return fileManager.getDataFromPath(navTree.findPath(treeElem));
-  }
+  this.getDataFromTreeElement = treeElem => navTree.elemData(treeElem);
   this.startDataSelect = () => new Promise((resolve) => {
     if (!mode.change(mode.SELECT)) {throw new Error(
       'Could not change to select mode'
     );}
     mode.lock();
-    selectTreeElem = function(treeElem) {
-      let isTopFolder = navTree.isTopFolder(treeElem);
-      if (treeElem && !isTopFolder && !treeElem.classList.contains('ready')) {return;}
+    selectTreeElem = function(treeElem = null) {
+      let dataHandler = null;
+      if (treeElem) {
+        treeElem = navTree.getContainingElement(treeElem);
+        dataHandler = treeElem && navTree.elemData(treeElem).dataHandler;
+        if (!dataHandler) {return;}
+      }
       selectTreeElem = () => null;
-      //gets path in the tree of the element clicked
       mode.unlock();
       if (!mode.change(mode.NORMAL)) {throw new Error(
         'Could not revert back to normal mode at the end of Data Selection. Review ' + 
         'the check callbacks of the Mode object to see which one did not allow the change'
       );};
-      if (treeElem === null) {return resolve({canceled: true});}
-      let path = navTree.findPath(treeElem);
-      let dataHandler = fileManager.getDataFromPath(path);
+      if (!dataHandler) {return resolve({canceled: true});}
       treeElem.classList.remove('highlight');
-      resolve({dataHandler, path, canceled: false});
+      resolve({dataHandler, canceled: false});
     }
   });
   this.stopDataSelect = () => selectTreeElem(null);
   this.addToTree = addToTree;
-  //  reads file given by path
   this.readFiles = readFiles;
 
-  //TODO: this updateTransforms code is similar to addToTree, see if can reuse code
   this.updateTransforms = function(newTransforms) {
-    fileManager.updateTransforms(newTransforms);
-    let files = fileManager.getDataFromPath();
-    //Step 1 - Recreate the file tree with new transforms
-    navTree.clear();
-    for (let dataHandler of files) {
-      let folderDiv = navTree.addToTree({
-        name: dataHandler.name, value: newTransforms.value
-      });
-      if (!dataHandler.value) {folderDiv.classList.add('empty');}
-      else if (dataHandler.type !== 'no-plot') {folderDiv.draggable = true;}
-    }
-
-    //Step 2 - Change the tree elements which correspond to an already calculated
-    //transformation to ready
-    for (let k = 0; k < files.length; k++) {
-      let fileElem = navTree.node().children[k];
-      (function checkElem(contents, structure, transforms) {
-        for (let i = 0; i < contents.length; i++) {
-          if (contents[i].classList.contains('collapsible')) { checkElem(
-            contents[i].children[1].children, structure[i], transforms[i].value
-          );}
-          else {
-            if (structure[i] !== null) {
-              if (transforms[i].type !== 'no-plot') {contents[i].draggable = true;}
-              contents[i].classList.add('ready');
-              if (typeof(structure[i]) === 'number') {
-                contents[i].title += contents[i].title ? 
-                  '\nValue calculated: ' + structure[i] : 
-                  'Value calculated: '   + structure[i];
-              }
-            }
-          }
+    transforms = newTransforms;
+    function updateBranch(branchElem, tfFolder) {
+      let contents = navTree.getFolderContents(branchElem);
+      let contentsTransforms = contents.map(elem => navTree.elemData(elem));
+      for (let i = 0, n = tfFolder.value.length; i < n; i++) {
+        let index = contentsTransforms.indexOf(tfFolder.value[i]);
+        if (index !== -1) {
+          navTree.changeIndex(contents[index], i);
+          updateBranch(contents[index], contentsTransforms[index]);
+          contents[index] = null;
         }
-      })(fileElem.children[1].children, files[k].structure, newTransforms.value);
+        else {
+          navTree.addToTree(tfFolder.value[i], (content, isLeaf) => 
+            isLeaf ? {transform: content, dataHandler: null} : content,
+            branchElem, i
+          );
+        }
+      }
+      for (let elem of contents) {elem && navTree.remove(elem);}
     }
+    let fileElems = navTree.getFolderContents(navTree.node());
+    for (let elem of fileElems) {updateBranch(elem, transforms);}
+
+    /*transforms = newTransforms;
+    navTree.node().style.display = 'none';
+    let fileElems = navTree.getFolderContents(navTree.node());
+    for (let elem of fileElems) {
+      let folderDiv = addToTree(navTree.elemData(elem).dataHandler);
+      //TODO: See if can fix this use of getting by class name and converting
+      //to array, it's not very nice
+      let oldLeafs = Array.from(
+        elem.nextElementSibling.getElementsByClassName('leaf-node'));
+      let newLeafs = Array.from(
+          folderDiv.nextElementSibling.getElementsByClassName('leaf-node'));
+      let oldLeafsTf = oldLeafs.map(leaf => navTree.elemData(leaf).transform);
+      let newLeafsTf = newLeafs.map(leaf => navTree.elemData(leaf).transform);
+      for (let i = 0, n = newLeafs.length; i < n; i++) {
+        let id = oldLeafsTf.indexOf(newLeafsTf[i]);
+        if (id !== -1) {newLeafs[i].replaceWith(oldLeafs[id]);}
+      }
+      navTree.remove(elem);
+    }
+    navTree.node().style.display = '';*/
   }
 
   //Private Functions
   function readFiles(paths) {
     for (let filePath of paths) {
-      let fileData = fileManager.readFile(filePath);
+      let fileData = FileManager.readFile(filePath);
       if (!fileData) {continue;}
       fileData.forEach(data => addToTree(data));
     }
   }
   function saveFile(treeElem) {
-    let dataHandler = fileManager.getDataFromPath(navTree.findPath(treeElem));
-    if (dataHandler instanceof DataHandler) {
-      callParent('save-file', {data: {
-          name: dataHandler.name, type: dataHandler.type,
-          value: dataHandler.isHierarchy ?
-            dataHandler.getLevel(0).data : dataHandler.value
-        }
-      });
-    }
+    let dataHandler = navTree.elemData(treeElem).dataHandler;
+    if (!dataHandler instanceof DataHandler) {return;}
+    callParent('save-file', {
+      data: {
+        name: dataHandler.name, type: dataHandler.type,
+        value: dataHandler.isHierarchy ?
+          dataHandler.getLevel(0).data : dataHandler.value
+    }});
   }
   function addToTree(dataHandler, openRenameBox = false) {
     if (typeof(dataHandler.name) !== 'string' || !filenameFormat.test(dataHandler.name)) {
       throw new TypeError(`The 'name' key of the 'dataHandler' object is invalid`);
     }
-    fileManager.addFile(dataHandler);
-    let transforms = fileManager.getTransformFromPath();
-    let folderDiv = navTree.addToTree({name: dataHandler.name, value: transforms.value});
+    let folderDiv = navTree.addToTree(
+      {name: dataHandler.name, value: transforms.value},
+      (content, isLeaf) => isLeaf ? 
+      {transform: content, dataHandler: null} : content
+    );
+    navTree.elemData(folderDiv, {dataHandler: dataHandler});
+    folderDiv.draggable = !['no-plot', 'static'].includes(dataHandler.type);
     if (!dataHandler.value) {folderDiv.classList.add('empty');}
-    else if (dataHandler.type !== 'no-plot') {folderDiv.draggable = true;}
     if (openRenameBox) {renameFile(folderDiv);}
+    return folderDiv;
   }
-  //  Rename navTree file
+  function calculateTransform(treeElem) {
+    treeElem = navTree.getContainingElement(treeElem);
+    if (!navTree.isLeaf(treeElem) || treeElem.classList.contains('broken')) {return;}
+    let fileData = navTree.elemData(navTree.getTopFolder(treeElem));
+    let leafData = navTree.elemData(treeElem);
+    callParent('arguments', {transform: leafData.transform})
+    .then(args => {
+      if (!args) {return;}
+      args.data = fileData.dataHandler.isHierarchy ?
+        fileData.dataHandler.getLevel(0).data : fileData.dataHandler.value;
+      let value;
+      try {value = calculateTransformSafely(leafData.transform.func, args);}
+      catch (err) {throw err;}
+      if (value === null || value === undefined) {return;}
+      leafData.dataHandler = new DataHandler({
+        name: leafData.transform.name, type: leafData.transform.type, value
+      });
+      if (typeof(value) === 'number') {
+        treeElem.title = !leafData.transform.tooltip ?
+          'Value calculated: ' + dataHandler.value :
+          leafData.transform.tooltip + '\nValue calculated: ' + value;
+      }
+      treeElem.classList.add('ready');
+      if (!['no-plot', 'static'].includes(leafData.transform.type)) {
+        treeElem.draggable = true;
+      }
+    }).catch((err) => {
+      treeElem.setAttribute('title', 'O código dessa transformação resultou ' + 
+      'em erro.\nCheque o console pressionando F12 para mais detalhes.');
+      treeElem.classList.add('broken');
+      console.error(err);
+    });
+  }
   function renameFile(treeElem) {
-    let elem = navTree.getContainingElement(treeElem);
-    if (!elem|| !navTree.isTopFolder(elem)) {return false;}
-    if (!mode.change(mode.RENAME)) {return false;}
+    treeElem = navTree.getContainingElement(treeElem);
+    if (!treeElem || !navTree.isTopFolder(treeElem)) {return;}
+    if (!mode.change(mode.RENAME)) {return;}
     mode.lock();
-    let textElem = elem.getElementsByClassName('node-name')[0];
-    let name = textElem.innerText;
-    //Creates div element that will appear if the name is invalid
-    let warningBox = appendNewElement(navTree.node(), 'div', 'warning')
-    warningBox.style.display = 'none';  //starts invisible
-    warningBox.innerHTML = 'Nome inválido para arquivo';
-    textElem.style.display = 'none';
-    //Creates input element
-    let renameBox = appendNewElement(elem, 'input', 'rename');
-    renameBox.setAttribute('type', 'text');
-    renameBox.setAttribute('value', name);
-
-    //Functions to handle input events
-    function checkStopKeys({keyCode}) {
-      if (
-        keyCode === 27 ||
-        (keyCode === 13 && filenameFormat.test(renameBox.value))
-      ) {renameBox.blur();}
-    }
-    function checkInput() {
-      if (!filenameFormat.test(renameBox.value)) {
-        if (warningBox.style.display === 'none') {
-          //positions warning box bellow rename box and shows it
-          let bRect = renameBox.getBoundingClientRect();
-          warningBox.style.left = `${bRect.left}px`;
-          warningBox.style.top = `${bRect.bottom}px`;
-          warningBox.style.width = `${bRect.width}px`;
-          warningBox.style.display = '';
-          renameBox.classList.add('warning');
-        }
-      }
-      else if (warningBox.style.display === ''){
-        warningBox.style.display = 'none';
-        renameBox.classList.remove('warning');
-      }
-    }
-    function setName() {
-      if (filenameFormat.test(renameBox.value) && name !== renameBox.value) {
-        name = renameBox.value;
-        fileManager.getDataFromPath(navTree.findPath(elem)).name = name;
-      }
-      mode.unlock();
-      mode.change(mode.NORMAL);
-      textElem.innerHTML = name;
-      textElem.style.display = '';
-      warningBox.remove(); renameBox.remove();
-      renameBox.removeEventListener('keydown', checkStopKeys);
-      renameBox.removeEventListener('input', checkInput);
-      if (selectedElems.length === 1 && selectedElems[0] === elem) {
-        callParent('properties', {pObjs: [
-          {
-            name: elem.innerText, props: getElemProperties(elem),
-            onChange: propertyChanged
-          }
-        ]})
-      }
-    }
-    //Configuring rename box functionality
-    renameBox.addEventListener('focusout', setName, {once: true});
-    renameBox.addEventListener('keydown', checkStopKeys);
-    renameBox.addEventListener('input', checkInput);
-    renameBox.focus();
-    renameBox.select();
-    return true;
+    navTree.openRenameBox(treeElem, filenameFormat)
+    .then(name => {
+      mode.unlock(); mode.change(mode.NORMAL);
+      navTree.elemData(treeElem).dataHandler.name = name;
+      if (selectedElems.length !== 1 || selectedElems[0] !== treeElem) {return;}
+      callParent('properties', {pObjs: [{
+        name: name, props: getElemProperties(treeElem),
+        onChange: propertyChanged
+      }]});
+    });
   }
   //  Remove file from tree if 'elem' is file. If 'elem' represents
   //  a calculated transformation, deletes its calculated value
   function deleteFromTree(treeElem) {
     treeElem = navTree.getContainingElement(treeElem);
-    let path = navTree.findPath(treeElem);
-    let isTopFolder = navTree.isTopFolder(treeElem);
-    if (path === null) {return false;}
-    if (isTopFolder) {treeElem.parentElement.remove();}
-    else if (treeElem.classList.contains('ready')) {
+    let data = navTree.elemData(treeElem);
+    let isLeaf = navTree.isLeaf(treeElem);
+    if (!data.dataHandler) {return false;}
+    else if (!isLeaf) {treeElem = navTree.remove(treeElem);}
+    else {
       treeElem.classList.remove('ready', 'highlight', 'selected');
-      treeElem.draggable = false;
+      data.dataHandler = null; treeElem.draggable = false;
     }
-    else if (treeElem.classList.contains('broken')) {
-      treeElem.classList.remove('broken');
-    }
-    else {return false;}
-    fileManager.deleteDataInPath(path);
-    
     let id = selectedElems.indexOf(treeElem);
     if (id !== -1) {
       selectedElems.splice(id, 1);
-      //Must remove all selected elements that were contained
-      //inside the deleted folder
-      if (isTopFolder) {
-        treeElem = treeElem.parentElement;
+      //Must remove all selected elements that were
+      //contained inside the deleted folder
+      if (!isLeaf) {
         for (let i = 0; i < selectedElems.length; i++) {
-          if (!treeElem.contains(selectedElems[i])) {continue;}
-          selectedElems.splice(i, 1);
+          if (treeElem.contains(selectedElems[i])) {
+            selectedElems.splice(i, 1);}
         }
       }
       sendPropertiesOfSelected();
@@ -243,13 +219,12 @@ function TransformPanel(modeObj) {
     return true;
   }
   function getElemProperties(treeElem) {
-    const path = navTree.findPath(treeElem);
-    let dataHandler = fileManager.getDataFromPath(path);
+    let {dataHandler, transform} = navTree.elemData(treeElem);
     if (!(dataHandler instanceof DataHandler)) {return [];}
     const props = [
-      {name: 'Name', value: dataHandler.name, disabled: path.length !== 1}
+      {name: 'Name', value: dataHandler.name, disabled: !!transform}
     ];
-    props.push(path.length !== 1 || dataHandler.type === 'no-plot' ? {
+    props.push(!!transform || dataHandler.type === 'no-plot' ? {
       name: 'Type', value: dataHandler.type, type: 'text', disabled: true
     } : {
       name: 'Type', value: dataHandler.type, type: 'select',
@@ -258,12 +233,11 @@ function TransformPanel(modeObj) {
     return props;
   }
   function propertyChanged({name, value}) {
-    let dataHandler = fileManager.getDataFromPath(navTree.findPath(selectedElems[0]));
+    let treeElem = navTree.getContainingElement(selectedElems[0]);
+    let dataHandler = navTree.elemData(treeElem).dataHandler;
     if (name === 'Name') {
-      let textElem = selectedElems[0].getElementsByClassName('node-name')[0];
-      if (value === textElem.innerText) {return;}
       if (!filenameFormat.test(value)) {return {replace: dataHandler.name};}
-      textElem.innerHTML = dataHandler.name = value;
+      navTree.elemName(treeElem, dataHandler.name = value);
       return {rename: value};
     }
     else if (name === 'Type') {dataHandler.type = value;}
@@ -274,13 +248,11 @@ function TransformPanel(modeObj) {
     }
     else if (selectedElems.length === 1) {
       callParent('properties', {pObjs: [{
-        name: selectedElems[0].innerText, onChange: propertyChanged,
+        name: navTree.elemName(selectedElems[0]), onChange: propertyChanged,
         props: getElemProperties(selectedElems[0])
       }]});
     }
-    else {
-      callParent('properties', {pObjs: []});
-    }
+    else {callParent('properties', {pObjs: []});}
   }
   //Listener to be executed when the mode is about to change
   function modeChange(newMode) {
@@ -292,12 +264,13 @@ function TransformPanel(modeObj) {
         //remove highlight from mouseover element if it can't be deleted
         if (
           mouseOverElem &&
-          !navTree.isTopFolder(mouseOverElem) &&
+          navTree.isLeaf(mouseOverElem) &&
           !mouseOverElem.classList.contains('ready')
         ) {mouseOverElem.classList.remove('highlight');}
       }
     }
   }
+
   function executeToolbarAction(buttonId, targetElems) { return function execute()
   {
     window.removeEventListener('mouseup', execute);
@@ -305,7 +278,7 @@ function TransformPanel(modeObj) {
       if (targetElems.length) {
         let openRenameBox = targetElems.length === 1;
         for (let target of targetElems) {
-          let dataHandler = fileManager.getDataFromPath(navTree.findPath(target));
+          let dataHandler = navTree.elemData(target).dataHandler;
           addToTree(new DataHandler(dataHandler), openRenameBox);
         }
       }
@@ -335,9 +308,10 @@ function TransformPanel(modeObj) {
   }}
   function updateSelectedElems(elem, addToSelection) {
     elem = navTree.getContainingElement(elem);
+    const invalid = !elem || 
+      (!navTree.isTopFolder(elem) && !elem.classList.contains('ready'));
     if (addToSelection && selectedElems.length) {
-      if (!elem || selectedElems.includes(elem)) {return;}
-      if (!navTree.isTopFolder(elem) && !elem.classList.contains('ready')) {return;}
+      if (invalid || selectedElems.includes(elem)) {return;}
       elem.classList.add('selected');
       selectedElems.push(elem);
       if (toolbarLevel !== 2 && !elem.classList.contains('empty')) {
@@ -346,10 +320,7 @@ function TransformPanel(modeObj) {
       sendPropertiesOfSelected();
     }
     else {
-      if (!elem) {return clearSelection();}
-      if (!navTree.isTopFolder(elem) && !elem.classList.contains('ready')) {
-        return clearSelection();
-      }
+      if (invalid) {return clearSelection();}
       const updateProperties = selectedElems.length > 1 || selectedElems[0] !== elem;
       while (selectedElems.length > 1) {
         selectedElems.pop().classList.remove('selected');
@@ -406,15 +377,12 @@ function TransformPanel(modeObj) {
     navTree.node().addEventListener('contextmenu', ({x, y, target}) => {
       let elem = navTree.getContainingElement(target);
       if (!elem) {return;}
-      let folderEmpty, isLeaf;
-      folderEmpty = isLeaf = false;
-      if (elem.classList.contains('folder-node')) {
-        if (elem.classList.contains('empty')) {folderEmpty = true;}
-        else if (!navTree.isTopFolder(elem)) {return;}
+      let folderEmpty, isLeaf = navTree.isLeaf(elem);
+      if (!isLeaf) {
+        if (!navTree.elemData(elem).dataHandler) {return;}
+        folderEmpty = elem.classList.contains('empty');
       }
-      else if (elem.classList.contains('ready')) {isLeaf = true;}
-      else {return;}
-
+      else if (!elem.classList.contains('ready')) {return;}
       callParent('context', {x, y, contextItems: [
         {name: 'Copy to New', return: 'copy',
          type: folderEmpty ? 'inactive' : undefined},
@@ -424,13 +392,11 @@ function TransformPanel(modeObj) {
          type: folderEmpty ? 'inactive' : undefined},
         {name: 'Remove', return: 'remove'},
       ]}).then((item) => {
-        if (!item) {return;}
         if (item === 'rename') {renameFile(elem);}
         else if (item === 'remove') {deleteFromTree(elem);}
         else if (item === 'save') {saveFile(elem);}
-        else { //item === 'copy'
-          addToTree(fileManager.getDataFromPath(navTree.findPath(elem)), true);
-        }
+        else if (item === 'copy') {
+          addToTree(navTree.elemData(elem).DataHandler, true);}
       });
     });
     //adding mouse hover handlers
@@ -439,75 +405,33 @@ function TransformPanel(modeObj) {
       if (mouseOverElem === elem) {return;}
       if (mouseOverElem) {mouseOverElem.classList.remove('highlight');}
       if (!(mouseOverElem = elem)) {return;}
-
-      if (mode.is(mode.RENAME)) {return;}
-      if (mode.is(mode.DELETE)) {
-        if (
-          !navTree.isTopFolder(mouseOverElem) &&
-          mouseOverElem.className === 'leaf-node'
-        ) {return;}
-      }
-      //if not in normal mode - highlights only elements with data associated
-      if (!mode.is(mode.NORMAL)) {
-        if (
-          !navTree.isTopFolder(mouseOverElem) &&
-          !mouseOverElem.classList.contains('ready')
-        ) { 
-          if (!mode.is(mode.DELETE)) {return;}
-          if (!mouseOverElem.classList.contains('broken')) {return;}
-        }
-      }
+      let dataHandler = navTree.elemData(mouseOverElem).dataHandler;
+      if (mode.is(mode.RENAME) || (!dataHandler && (
+        mode.is(mode.DELETE) || mode.is(mode.SELECT)))) {return;}
       mouseOverElem.classList.add('highlight');
     });
     navTree.node().addEventListener('mouseout', () => {
-      if (!mouseOverElem) {return;}
-      mouseOverElem.classList.remove('highlight');
-      mouseOverElem = null;
+      mouseOverElem && mouseOverElem.classList.remove('highlight'), mouseOverElem = null
     });
     //adding click handler
     navTree.node().addEventListener('click', ({target, ctrlKey}) => {
-      //will only toggle folder when clicking on the node-icon
       if (target.classList.contains('node-icon')) {navTree.toggleFolder(target);}
-      if (mode.is(mode.NORMAL)) {updateSelectedElems(target, ctrlKey);}
+      else if (mode.is(mode.NORMAL)) {updateSelectedElems(target, ctrlKey);}
     });
     //adding double click handler
     navTree.node().addEventListener('dblclick', ({target}) => {
-      let elem = navTree.getContainingElement(target);
-      if (!elem) {return;}
-      if (mode.is(mode.DELETE)) {deleteFromTree(elem);}
-      else if (mode.is(mode.SELECT)) {selectTreeElem(elem);}
-      else if (mode.is(mode.NORMAL)){
-        if (!elem.classList.contains('leaf-node')) {return;}
-        fileManager.calculateTransform(navTree.findPath(elem),
-          (argsFormat) => callParent('arguments', {argsFormat})
-        ).then(({transform, dataHandler}) => {
-          if (!transform) {return;}
-          if (typeof(dataHandler.value) === 'number') {
-            elem.title = !transform.tooltip ?
-              'Value calculated: ' + dataHandler.value :
-              transform.tooltip + '\nValue calculated: ' + dataHandler.value;
-          }
-          elem.classList.add('ready');
-          if (dataHandler.type !== 'no-plot') {elem.draggable = true;}
-        }).catch((err) => {
-          elem.setAttribute('title', 'O código dessa transformação resultou em erro.\n' +
-          'Cheque o console pressionando F12 para mais detalhes.');
-          elem.classList.add('broken');
-          console.error(err);
-        });
-      }
+      if (mode.is(mode.DELETE)) {deleteFromTree(target);}
+      else if (mode.is(mode.SELECT)) {selectTreeElem(target);}
+      else if (mode.is(mode.NORMAL)) {calculateTransform(target);}
     });
     //adding drag handler
     navTree.node().addEventListener('dragstart', (event) => {
-      if (!mode.change(mode.DRAG)) {
-        event.preventDefault();
-        return;
-      }
+      if (!mode.change(mode.DRAG)) {return event.preventDefault();}
       mode.lock();
       let dragElem = event.target;
-      navTree.node().classList.add('drag');
       dragElem.classList.remove('highlight');
-      let dataHandler = fileManager.getDataFromPath(navTree.findPath(dragElem));
+      navTree.node().classList.add('drag');
+      let dataHandler = navTree.elemData(dragElem).dataHandler;
       callParent('transferData', {transferData: dataHandler});
 
       function drop(event) {
@@ -515,31 +439,30 @@ function TransformPanel(modeObj) {
         let elem = navTree.getContainingElement(event.target);
         if (!elem) return;
         event.preventDefault();
-        let fileId = navTree.findPath(elem)[0];
-        fileManager.resetFileStructure(fileId);
-        let shallowClone = new DataHandler(dataHandler);
-        shallowClone.name = elem.innerText;
-        fileManager.setFileData(fileId, shallowClone);
-        if (elem.classList.contains('empty')) {
-          if (shallowClone.type !== 'no-plot') {elem.draggable = true;}
-          elem.classList.remove('empty');
+        let leafs = navTree.node().getElementsByClassName('leaf-node');
+        for (let leaf of leafs) {
+          navTree.elemData(leaf).dataHandler = null;
+          leaf.className = 'leaf-node';
         }
-        else {
-          let leafs = elem.parentElement.getElementsByClassName('leaf-node');
-          for (let leaf of leafs) {leaf.className = 'leaf-node';}
+        let shallowClone = new DataHandler(dataHandler);
+        shallowClone.name = navTree.elemName(elem);
+        navTree.elemData(elem).dataHandler = shallowClone;
+        if (elem.classList.contains('empty')) {
+          elem.classList.remove('empty');
+          if (['no-plot', 'static'].includes(shallowClone.type)) {
+            elem.draggable = true;}
         }
       }
       function dragOver (event) {
         mouseOverElem = navTree.getContainingElement(event.target);
-        if (!mouseOverElem || !navTree.isTopFolder(mouseOverElem)) {return;}
-        if (mouseOverElem === dragElem) {return;}
+        if (mouseOverElem === dragElem || 
+          !navTree.isTopFolder(mouseOverElem)) {return;}
         mouseOverElem.classList.add('highlight');
         event.preventDefault();
       }
       function dragLeave() {
-        if (!mouseOverElem) {return;}
-        mouseOverElem.classList.remove('highlight');
-        mouseOverElem = null;
+        return mouseOverElem && 
+          mouseOverElem.classList.remove('highlight'), mouseOverElem = null;
       }
       function dragEnd({target}) {
         mode.unlock();
@@ -554,7 +477,7 @@ function TransformPanel(modeObj) {
       navTree.node().addEventListener('drop'     , drop);
       navTree.node().addEventListener('dragover' , dragOver);
       navTree.node().addEventListener('dragleave', dragLeave);
-      dragElem.addEventListener ('dragend'  , dragEnd, {once: true});
+      dragElem.addEventListener('dragend'  , dragEnd, {once: true});
     });
     
     //Adding toolbar handler

@@ -210,14 +210,14 @@ function Chart(id = 0, height = 150) {
       if (plot.type === 'normal') {
         if (plot.dataHandler.isHierarchy) {
           let data = plot.dataHandler.getRange(...xScaleZoom.domain());
-          linePlot(plot.sel, data);
+          if (data.length) {linePlot(plot.sel, data);}
         }
         else {linePlot(plot.sel);}
       }
       else if (plot.type === 'scatter') {
         if (plot.dataHandler.isHierarchy) {
           let data = plot.dataHandler.getRange(...xScaleZoom.domain());
-          scatterPlot(plot.sel, data);
+          if (data.length) {scatterPlot(plot.sel, data);}
         }
         else {scatterPlot(plot.sel);}
       }

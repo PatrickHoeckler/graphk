@@ -61,7 +61,7 @@ The complete reference of keys for a transformation is given bellow:
   + `option` (Object | Object[]) (Optional) - Only affects arguments of type `select` and must be defined if that is the case. Specify the options for the drop-down menu. The valid keys are:
     + `name` String - Defines the name of the option shown to the user, it is also the value of the argument if the option is selected.
     + `tooltip` String (Optional) - Description to show when the user hovers over the option.
-  + `optional` Boolean (Optional) - Indicates wheter or not the argument can be left empty. Default is `false`.
+  + `optional` Boolean (Optional) - Only affects arguments of type `number` or `data`. Indicates wheter or not the argument can be left empty. Default is `false`.
   + `max` Number (Optional) - Only affects arguments of type `number`. Defines the maximum value allowed for the number. If ommited, no maximum value will be considered.
   + `min` Number (Optional) - Only affects arguments of type `number`. Defines the minimum value allowed for the number.  If ommited, no minimum value will be considered.
   + `step` Number (Optional) - Only affects arguments of type `number`. Defines the granularity allowed for the number. If ommited, no step value will be considered.

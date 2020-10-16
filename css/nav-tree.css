@@ -36,19 +36,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-left: 4px;
 }
 
 /*Tree icons*/
 /*  Folder icons  */
 .nav-tree .folder {--icon-uncollapsed:"\1F5C1"; --icon-collapsed  :"\1F5C0";}
-.nav-tree .folder.pkg {--icon-uncollapsed:"\25EB"; --icon-collapsed  :"\25F0";}
-.nav-tree .folder.empty {--icon-uncollapsed:"\1F5CB";}
-/*  Leaf icons  */
-.nav-tree .leaf-node        {--icon:"\25FB";}
-.nav-tree .leaf-node.ready  {--icon:"\25FC";}
-.nav-tree .leaf-node.broken {--icon:"\2715";}
 /*  Icon display behaviour  */
+.nav-tree .node-icon::before {margin: 0.3em;}
 .folder              > .folder-node > .node-icon::before {content: var(--icon-uncollapsed);}
 .folder.collapsed    > .folder-node > .node-icon::before {content: var(--icon-collapsed);}
 .nav-tree              .leaf-node   > .node-icon::before {content: var(--icon);}
