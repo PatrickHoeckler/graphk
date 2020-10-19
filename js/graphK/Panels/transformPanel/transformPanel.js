@@ -66,17 +66,19 @@ function TransformPanel(modeObj) {
     transforms = newTransforms;
     function updateBranch(branchElem, tfFolder) {
       let contents = navTree.getFolderContents(branchElem);
-      let contentsTransforms = contents.map(elem => navTree.elemData(elem));
+      let contentsTransforms = contents.map(elem => navTree.elemData(elem).transform);
       for (let i = 0, n = tfFolder.value.length; i < n; i++) {
         let index = contentsTransforms.indexOf(tfFolder.value[i]);
         if (index !== -1) {
           navTree.changeIndex(contents[index], i);
-          updateBranch(contents[index], contentsTransforms[index]);
+          if (!navTree.isLeaf(contents[index])) {
+            updateBranch(contents[index], contentsTransforms[index]);
+          }
           contents[index] = null;
         }
         else {
           navTree.addToTree(tfFolder.value[i], (content, isLeaf) => 
-            isLeaf ? {transform: content, dataHandler: null} : content,
+            isLeaf ? {transform: content, dataHandler: null} : {transform: content},
             branchElem, i
           );
         }
@@ -85,27 +87,6 @@ function TransformPanel(modeObj) {
     }
     let fileElems = navTree.getFolderContents(navTree.node());
     for (let elem of fileElems) {updateBranch(elem, transforms);}
-
-    /*transforms = newTransforms;
-    navTree.node().style.display = 'none';
-    let fileElems = navTree.getFolderContents(navTree.node());
-    for (let elem of fileElems) {
-      let folderDiv = addToTree(navTree.elemData(elem).dataHandler);
-      //TODO: See if can fix this use of getting by class name and converting
-      //to array, it's not very nice
-      let oldLeafs = Array.from(
-        elem.nextElementSibling.getElementsByClassName('leaf-node'));
-      let newLeafs = Array.from(
-          folderDiv.nextElementSibling.getElementsByClassName('leaf-node'));
-      let oldLeafsTf = oldLeafs.map(leaf => navTree.elemData(leaf).transform);
-      let newLeafsTf = newLeafs.map(leaf => navTree.elemData(leaf).transform);
-      for (let i = 0, n = newLeafs.length; i < n; i++) {
-        let id = oldLeafsTf.indexOf(newLeafsTf[i]);
-        if (id !== -1) {newLeafs[i].replaceWith(oldLeafs[id]);}
-      }
-      navTree.remove(elem);
-    }
-    navTree.node().style.display = '';*/
   }
 
   //Private Functions
@@ -123,7 +104,7 @@ function TransformPanel(modeObj) {
       data: {
         name: dataHandler.name, type: dataHandler.type,
         value: dataHandler.isHierarchy ?
-          dataHandler.getLevel(0).data : dataHandler.value
+          dataHandler.getLevel(0) : dataHandler.value
     }});
   }
   function addToTree(dataHandler, openRenameBox = false) {
@@ -133,7 +114,7 @@ function TransformPanel(modeObj) {
     let folderDiv = navTree.addToTree(
       {name: dataHandler.name, value: transforms.value},
       (content, isLeaf) => isLeaf ? 
-      {transform: content, dataHandler: null} : content
+      {transform: content, dataHandler: null} : {transform: content}
     );
     navTree.elemData(folderDiv, {dataHandler: dataHandler});
     folderDiv.draggable = !['no-plot', 'static'].includes(dataHandler.type);
@@ -150,11 +131,12 @@ function TransformPanel(modeObj) {
     .then(args => {
       if (!args) {return;}
       args.data = fileData.dataHandler.isHierarchy ?
-        fileData.dataHandler.getLevel(0).data : fileData.dataHandler.value;
+        fileData.dataHandler.getLevel(0) : fileData.dataHandler.value;
       let value;
       try {value = calculateTransformSafely(leafData.transform.func, args);}
       catch (err) {throw err;}
-      if (value === null || value === undefined) {return;}
+      if (value === null || value === undefined ||
+        (Array.isArray(value) && !value.length)) {return;}
       leafData.dataHandler = new DataHandler({
         name: leafData.transform.name, type: leafData.transform.type, value
       });

@@ -50,7 +50,7 @@ return new Promise((resolve) => {
           else {
             currentTarget.innerHTML = dataHandler.name;
             currentTarget[_argData] = dataHandler.isHierarchy ?
-              dataHandler.getLevel(0).data : dataHandler.value;
+              dataHandler.getLevel(0) : dataHandler.value;
           }
         });
       });

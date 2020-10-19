@@ -103,7 +103,8 @@ function Chart(id = 0, height = 150) {
         dataHandler.type = 'y-axis';
       }
     }
-    else if (dataHandler.isHierarchy) {data = dataHandler.getLastLevel().data;}
+    else if (dataHandler.isHierarchy) {data = dataHandler.getLastLevel();}
+    else if (!data.length) {return;}
     if (updateScaleDomain(data)) {
       gxAxis.call(xAxis); gyAxis.call(yAxis);
       replotAll();
@@ -121,7 +122,7 @@ function Chart(id = 0, height = 150) {
       plotSel = linePlot(null, data, options);
     }
     else if (dataHandler.type === 'scatter') {
-      if (dataHandler.isHierarchy) {data = dataHandler.getLevel(0).data;}
+      if (dataHandler.isHierarchy) {data = dataHandler.getLevel(0);}
       plotSel = scatterPlot(null, data, options);
     }
     else {throw new Error(
@@ -317,8 +318,7 @@ function Chart(id = 0, height = 150) {
     for (let plot of plotArray) {
       if (plot.type === 'normal' || plot.type === 'scatter') {
         data = plot.dataHandler.isHierarchy ? 
-          plot.dataHandler.getLastLevel().data :
-          plot.dataHandler.value;
+          plot.dataHandler.getLastLevel() : plot.dataHandler.value;
       }
       else {data = plot.sel.data();}
       if (!data[0]) {continue;}

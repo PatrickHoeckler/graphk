@@ -2,24 +2,36 @@
 
 module.exports = {DataHandler};
 
+function logSearchIndex(data, xValue) {
+  let index;
+  let begin = 0;
+  let end = data.length - 1;
+  while (begin < end) {
+    index = Math.ceil((end + begin) / 2);
+    if (data[index][0] <= xValue) {begin = index;}
+    else {end = index - 1;}
+  }
+  return begin;
+}
+
 function createHierarchy(data) {
   //Create first level of hierarchy, this level will have
   //all the points from the original data
   const dataHierarchy = [];
-  dataHierarchy.push({data, dx: data[1][0] - data[0][0]});
+  dataHierarchy.push(data);
   if (data.length < DataHandler.MAX_ELEMENTS) {return dataHierarchy;}
 
   //Create all other levels of hierarchy, until the last level has
   //less elements than the MAX_ELEMENTS value.
   let reduceScale = DataHandler.WINDOW_SIZE;
   data = reduceData(data, reduceScale);
-  dataHierarchy.push({data, dx: data[1][0] - data[0][0]});
+  dataHierarchy.push(data);
   //Divide scale by 2 because the next levels of the hierarchy will hold two
   //y points (ymin and ymax) for each x point
   reduceScale /= 2;
   while (DataHandler.MAX_ELEMENTS < data.length * 2) {
     data = reduceData(data, reduceScale);
-    dataHierarchy.push({data, dx: data[1][0] - data[0][0]});
+    dataHierarchy.push(data);
   }
   return dataHierarchy;
 }
@@ -96,40 +108,36 @@ DataHandler.setParameters(12, 8000);
 Object.defineProperties(DataHandler.prototype, {
   constructor: {value: DataHandler, enumerable: false},
   getRange: {enumerable: false, value: function(x0, x1) {
-    if (!this.isHierarchy) {return null;}
-    let dataLevel = this.value[0];
-    let lastX = dataLevel.data[dataLevel.data.length - 1][0];
-    if (x0 < dataLevel.data[0][0]) {x0 = dataLevel.data[0][0];}
+    let data = this.isHierarchy ? this.value[0] : this.value;
+    let lastX = data[data.length - 1][0];
+    if (x0 < data[0][0]) {x0 = data[0][0];}
     if (x1 > lastX) {x1 = lastX;}
     
-    //interval in a given level contains the following number of points:
-    //  nPoints = (2 + Math.floor(interval / dataLevel.dx)) * 
-    //    (level === 0 ? 1 : 2)
-    //if nPoints < DataHandler.MAX_ELEMENTS, then the level can represent
-    //the range
-    const interval = x1 - x0;
-    //Check if top level can represent data
-    let nPoints = 2 + Math.floor(interval / dataLevel.dx);
-    if (DataHandler.MAX_ELEMENTS < nPoints) {
+    //We must add +2 to the end value because the logSearchIndex returns a
+    //rounded down value, so to not lose any points we add the +2, we may get
+    //one or two extra points, but that's okay, at least we aren't missing
+    //anything
+    let start = logSearchIndex(data, x0);
+    let end   = logSearchIndex(data, x1) + 2;
+    if (this.isHierarchy && DataHandler.MAX_ELEMENTS < end - start) {
       for (let i = 1, n = this.value.length; i < n; i++) {
-        dataLevel = this.value[i];
-        nPoints = 4 + 2 * Math.floor(interval / dataLevel.dx);
-        if (nPoints <= DataHandler.MAX_ELEMENTS) {break;}
+        data = this.value[i];
+        start = logSearchIndex(data, x0);
+        end   = logSearchIndex(data, x1) + 2;
+        if (2 * (end - start) <= DataHandler.MAX_ELEMENTS) {break;}
       }
     }
-    const start = Math.floor((x0 - dataLevel.data[0][0]) / dataLevel.dx);
-    const end = 1 + Math.ceil((x1 - dataLevel.data[0][0]) / dataLevel.dx);
-    return dataLevel.data.slice(start, end)
+    return data.slice(start, end);
   }},
   getRangeAtLevel: {enumerable: false, value: function (x0, x1, level) {
-    let dataLevel;
-    if (!this.isHierarchy || !(dataLevel = this.value[level])) {return null;}
-    let lastX = dataLevel.data[dataLevel.data.length - 1][0];
-    if (x0 < dataLevel.data[0][0]) {x0 = dataLevel.data[0][0];}
+    if (!this.isHierarchy || !this.value[level]) {return null;}
+    let data = this.value[level];
+    let lastX = data[data.length - 1][0];
+    if (x0 < data[0][0]) {x0 = data[0][0];}
     if (x1 > lastX) {x1 = lastX;}
-    const start = Math.floor((x0 - dataLevel.data[0][0]) / dataLevel.dx);
-    const end = 1 + Math.ceil((x1 - dataLevel.data[0][0]) / dataLevel.dx);
-    return dataLevel.data.slice(start, end)
+    const start = logSearchIndex(data, x0);
+    const end   = logSearchIndex(data, x1) + 2;
+    return data.slice(start, end)
   }},
   getLevel: {enumerable: false, value: function (level) {
     return this.isHierarchy ? this.value[level] : null;

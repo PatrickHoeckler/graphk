@@ -156,7 +156,8 @@ function GraphK() {
       return Promise.resolve(null);
     }
     if (message === 'arguments') {return selectArguments(
-      details.windowTitle, details.transform, node, startDataSelect
+      details.windowTitle || 'Select Arguments',
+      details.transform, node, startDataSelect
     );}
     if (message === 'properties') {
       panels.properties.openProperties(details.pObjs);

@@ -1,6 +1,6 @@
 .window {z-index: 9999;}
 .window, .window .window-overlay {
-  position: absolute;
+  position: fixed;
   top: 0; left: 0;
   height: 100%; width: 100%;
 }

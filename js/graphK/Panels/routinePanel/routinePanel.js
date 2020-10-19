@@ -124,7 +124,7 @@ function RoutinePanel(modeObj) {
     callParent('get-data').then(({dataHandler, canceled}) => {
       if (canceled) {return;}
       let value = dataHandler.isHierarchy ?
-        dataHandler.getLevel(0).data : dataHandler.value;
+        dataHandler.getLevel(0) : dataHandler.value;
       if (dataHandler.type !== 'normal') {throw TypeError(
         `Expected a set of data of type 'normal'`
       );}
